@@ -1,5 +1,9 @@
 import os
 import sys
+
+from dotenv import load_dotenv
+from fhandler import FileHandler
+
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QListView
 from PySide6.QtCore import QSize
@@ -7,10 +11,11 @@ from PySide6.QtGui import QIcon
 
 from pathlib import Path
 
-allowed_types = [".jpeg", ".png", ".jpg", ".jfif"]
+
+is_folder_chosen = False
 
 
-class MyWidget(QtWidgets.QWidget):
+class MainWidget(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
@@ -28,29 +33,26 @@ class MyWidget(QtWidgets.QWidget):
         # add the main layout and all items
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addSpacing(10)
-        self.layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
+        if not is_folder_chosen:
+            self.layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
         self.layout.addSpacing(10)
         self.layout.addWidget(self.list)
 
         # connecting to the button click action
         self.button.clicked.connect(self.on_button_clicked)
 
-    def clear_files_list(self, files_list):
-        filtered = [
-            f for f in files_list if os.path.splitext(f)[1].lower() in allowed_types
-        ]
-        return filtered
-
     # button click event
     @QtCore.Slot()
     def on_button_clicked(self):
-        # QtWidgets.QMessageBox.information(self, "Внимание!", "Тестовое сообщение")
-        files_dlg = QtWidgets.QFileDialog()
+
         files_list = []
+
+        files_dlg = QtWidgets.QFileDialog()
         folder = files_dlg.getExistingDirectory()
+
         if folder:
             files_list = os.listdir(folder)
-            files_list = self.clear_files_list(files_list)
+            files_list = FileHandler.clear_files_list(self, files_list)
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -58,19 +60,21 @@ class MyWidget(QtWidgets.QWidget):
                     "Выбранная папка пуста или не содержит файлы поддерживаемых форматов.",
                 )
             else:
-                # self.list.addItems(files_list)
                 for f in files_list:
                     icon_path = Path(__file__).parent / "testicon.png"
                     item = QtWidgets.QListWidgetItem(f)
                     item.setIcon(QIcon(str(icon_path)))
                     self.list.addItem(item)
 
+                    is_folder_chosen = True
+                    self.button.deleteLater()
+
 
 if __name__ == "__main__":
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
 
-    widget = MyWidget()
+    widget = MainWidget()
     widget.setWindowTitle("Media Manager")
     widget.setWindowIcon(QtGui.QIcon(str(icon_path)))
 
