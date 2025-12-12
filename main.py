@@ -1,5 +1,6 @@
 import os
 import sys
+import config
 
 from dotenv import load_dotenv
 from fhandler import FileHandler
@@ -11,13 +12,25 @@ from PySide6.QtGui import QIcon
 
 from pathlib import Path
 
+load_dotenv()
 
-is_folder_chosen = False
+debug = True
+
+
+def assign_script_dir():
+    if getattr(sys, "frozen", False):
+        script_dir = os.path.dirname(sys.executable)
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    return script_dir
 
 
 class MainWidget(QtWidgets.QWidget):
+
     def __init__(self):
         super().__init__()
+
+        self.is_folder_chosen = os.getenv("IS_FOLDER_CHOSEN", "False") == "True"
 
         # create button
         self.button = QtWidgets.QPushButton("Выбрать папку")
@@ -33,7 +46,7 @@ class MainWidget(QtWidgets.QWidget):
         # add the main layout and all items
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addSpacing(10)
-        if not is_folder_chosen:
+        if not self.is_folder_chosen and debug:
             self.layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
         self.layout.addSpacing(10)
         self.layout.addWidget(self.list)
@@ -66,8 +79,11 @@ class MainWidget(QtWidgets.QWidget):
                     item.setIcon(QIcon(str(icon_path)))
                     self.list.addItem(item)
 
-                    is_folder_chosen = True
+                if not debug:
                     self.button.deleteLater()
+
+                config.save_to_env("IS_FOLDER_CHOSEN", "True")
+                config.save_to_env("FOLDER_PATH", folder)
 
 
 if __name__ == "__main__":
@@ -75,7 +91,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
     widget = MainWidget()
-    widget.setWindowTitle("Media Manager")
+    widget.setWindowTitle(str("Media Manager v." + config.VERSION))
     widget.setWindowIcon(QtGui.QIcon(str(icon_path)))
 
     widget.resize(800, 600)
