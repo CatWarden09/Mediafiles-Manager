@@ -17,14 +17,6 @@ load_dotenv()
 debug = True
 
 
-def assign_script_dir():
-    if getattr(sys, "frozen", False):
-        script_dir = os.path.dirname(sys.executable)
-    else:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-    return script_dir
-
-
 class MainWidget(QtWidgets.QWidget):
 
     def __init__(self):
@@ -46,7 +38,7 @@ class MainWidget(QtWidgets.QWidget):
         # add the main layout and all items
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addSpacing(10)
-        if not self.is_folder_chosen and debug:
+        if not self.is_folder_chosen or debug:
             self.layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
         self.layout.addSpacing(10)
         self.layout.addWidget(self.list)
@@ -65,7 +57,7 @@ class MainWidget(QtWidgets.QWidget):
 
         if folder:
             files_list = os.listdir(folder)
-            files_list = FileHandler.clear_files_list(self, files_list)
+            files_list = FileHandler.clear_files_list(files_list)
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
