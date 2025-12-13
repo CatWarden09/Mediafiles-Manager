@@ -54,10 +54,10 @@ class MainWidget(QtWidgets.QWidget):
 
         files_dlg = QtWidgets.QFileDialog()
         folder = files_dlg.getExistingDirectory()
-
+        print(folder)
         if folder:
-            files_list = os.listdir(folder)
-            files_list = FileHandler.clear_files_list(files_list)
+            files_list = FileHandler.clear_files_list(folder)
+            FileHandler.set_image_thumbnail(folder)
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -67,7 +67,7 @@ class MainWidget(QtWidgets.QWidget):
             else:
                 for f in files_list:
                     icon_path = Path(__file__).parent / "testicon.png"
-                    item = QtWidgets.QListWidgetItem(f)
+                    item = QtWidgets.QListWidgetItem(f["filename"])
                     item.setIcon(QIcon(str(icon_path)))
                     self.list.addItem(item)
 
