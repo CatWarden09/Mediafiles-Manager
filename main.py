@@ -54,10 +54,11 @@ class MainWidget(QtWidgets.QWidget):
 
         files_dlg = QtWidgets.QFileDialog()
         folder = files_dlg.getExistingDirectory()
-        print(folder)
+        # print(folder)
         if folder:
             files_list = FileHandler.clear_files_list(folder)
-            FileHandler.set_image_thumbnail(folder)
+            FileHandler.create_image_thumbnail(folder)
+            FileHandler.create_video_thumbnail(folder)
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -65,6 +66,7 @@ class MainWidget(QtWidgets.QWidget):
                     "Выбранная папка пуста или не содержит файлы поддерживаемых форматов.",
                 )
             else:
+                # TODO: call a function with filename, which will go to the DB and get the thumbnail path via filename
                 for f in files_list:
                     icon_path = Path(__file__).parent / "testicon.png"
                     item = QtWidgets.QListWidgetItem(f["filename"])
