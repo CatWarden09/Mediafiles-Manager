@@ -4,6 +4,7 @@ import config
 
 from dotenv import load_dotenv
 from fhandler import FileHandler
+from fhandler import DatabaseHanlder
 
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QListView
@@ -16,10 +17,14 @@ load_dotenv()
 
 debug = True
 
+db = DatabaseHanlder()
+
 
 class MainWidget(QtWidgets.QWidget):
 
     def __init__(self):
+
+        self.fhandler = FileHandler(db)
         super().__init__()
 
         self.is_folder_chosen = os.getenv("IS_FOLDER_CHOSEN", "False") == "True"
@@ -56,9 +61,12 @@ class MainWidget(QtWidgets.QWidget):
         folder = files_dlg.getExistingDirectory()
         # print(folder)
         if folder:
-            files_list = FileHandler.clear_files_list(folder)
-            FileHandler.create_image_thumbnail(folder)
-            FileHandler.create_video_thumbnail(folder)
+            # TODO make a separate function
+            db.connect_to_database()
+            files_list = self.fhandler.clear_files_list(folder)
+            self.fhandler.create_image_thumbnail(folder)
+            self.fhandler.create_video_thumbnail(folder)
+            db.save_changes()
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -67,9 +75,9 @@ class MainWidget(QtWidgets.QWidget):
                 )
             else:
                 # TODO: call a function with filename, which will go to the DB and get the thumbnail path via filename
-                for f in files_list:
+                for file in files_list:
                     icon_path = Path(__file__).parent / "testicon.png"
-                    item = QtWidgets.QListWidgetItem(f["filename"])
+                    item = QtWidgets.QListWidgetItem(file["filename"])
                     item.setIcon(QIcon(str(icon_path)))
                     self.list.addItem(item)
 
@@ -78,9 +86,14 @@ class MainWidget(QtWidgets.QWidget):
 
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
+        db.save_changes()
+        db.close_connection()
 
 
 if __name__ == "__main__":
+
+    db.init_database()
+
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
 
