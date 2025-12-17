@@ -22,6 +22,7 @@ allowed_video_formats = [
 allowed_types = allowed_image_formats + allowed_video_formats
 
 
+# TODO add a check if the thumbnails folder already exists and skip these methods (for the future features in case user changes folder back to the previous one !- need to check if there are any changes in files)
 class FileHandler:
 
     def __init__(self, db):
@@ -34,12 +35,10 @@ class FileHandler:
             if os.path.splitext(f)[1].lower() in allowed_types:
                 filtered.append({"filename": f, "file_path": os.path.join(folder, f)})
 
-        # print(filtered)
-        # filtered = {
-        #     f for f in files_list if os.path.splitext(f)[1].lower() in allowed_types
-        # }
         return filtered
 
+    # TODO merge with video thubmnail method and refactor so it works with filtered file list from the method above (can pass it from main)
+    # because now we have 3 separate methods that do similar job with the same list at the same time
     def create_image_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
         os.makedirs(save_path, exist_ok=True)
@@ -80,19 +79,12 @@ class FileHandler:
 
 
 class DatabaseHanlder:
-    def connect_to_database(self):
-        self.connection = sqlite3.connect(
-            os.path.join(config.assign_script_dir(), "files.db")
-        )
-        self.cursor = self.connection.cursor()
+    def __init__(self):
 
-    def save_changes(self):
-        self.connection.commit()
+        folder_path = os.path.join(config.assign_script_dir(), "fhandler_data")
+        os.makedirs(folder_path, exist_ok=True)
+        self.db_path = os.path.join(folder_path, "files.db")
 
-    def close_connection(self):
-        self.connection.close()
-
-    def init_database(self):
         self.connect_to_database()
 
         self.cursor.execute(
@@ -107,6 +99,17 @@ class DatabaseHanlder:
         )
 
         self.save_changes()
+
+    def connect_to_database(self):
+
+        self.connection = sqlite3.connect(self.db_path)
+        self.cursor = self.connection.cursor()
+
+    def save_changes(self):
+        self.connection.commit()
+
+    def close_connection(self):
+        self.connection.close()
 
     def save_to_database(self, file_name: str, file_path: str, preview_path: str):
         self.cursor.execute(

@@ -1,7 +1,7 @@
 import sys
 import os
 
-VERSION = "0.2"
+VERSION = "0.2.1"
 
 
 
@@ -13,7 +13,6 @@ def assign_script_dir():
     return script_dir
     
 
-    
 
 env_path = os.path.join(assign_script_dir(), ".env")
 

@@ -3,8 +3,8 @@ import sys
 import config
 
 from dotenv import load_dotenv
-from fhandler import FileHandler
-from fhandler import DatabaseHanlder
+from fhandler import FileHandler, DatabaseHanlder
+
 
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QListView
@@ -17,7 +17,7 @@ load_dotenv()
 
 debug = True
 
-db = DatabaseHanlder()
+
 
 
 class MainWidget(QtWidgets.QWidget):
@@ -54,7 +54,7 @@ class MainWidget(QtWidgets.QWidget):
     # button click event
     @QtCore.Slot()
     def on_button_clicked(self):
-
+        db.connect_to_database()
         files_list = []
 
         files_dlg = QtWidgets.QFileDialog()
@@ -62,11 +62,8 @@ class MainWidget(QtWidgets.QWidget):
         # print(folder)
         if folder:
             # TODO make a separate function
-            db.connect_to_database()
+
             files_list = self.fhandler.clear_files_list(folder)
-            self.fhandler.create_image_thumbnail(folder)
-            self.fhandler.create_video_thumbnail(folder)
-            db.save_changes()
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -74,6 +71,8 @@ class MainWidget(QtWidgets.QWidget):
                     "Выбранная папка пуста или не содержит файлы поддерживаемых форматов.",
                 )
             else:
+                self.fhandler.create_image_thumbnail(folder)
+                self.fhandler.create_video_thumbnail(folder)
                 # TODO: call a function with filename, which will go to the DB and get the thumbnail path via filename
                 for file in files_list:
                     icon_path = Path(__file__).parent / "testicon.png"
@@ -92,7 +91,7 @@ class MainWidget(QtWidgets.QWidget):
 
 if __name__ == "__main__":
 
-    db.init_database()
+    db = DatabaseHanlder()
 
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
