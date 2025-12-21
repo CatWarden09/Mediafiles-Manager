@@ -18,8 +18,6 @@ load_dotenv()
 debug = True
 
 
-
-
 class MainWidget(QtWidgets.QWidget):
 
     def __init__(self):
@@ -75,9 +73,17 @@ class MainWidget(QtWidgets.QWidget):
                 self.fhandler.create_video_thumbnail(folder)
                 # TODO: call a function with filename, which will go to the DB and get the thumbnail path via filename
                 for file in files_list:
-                    icon_path = Path(__file__).parent / "testicon.png"
+
+                    icon_path = db.get_previewpath(file["filename"])
+                    # print("old icon path:", icon_path)
+
+                    # convert the path to the first element of a tuple because SQLite returns a tuple with 1 element, and QIcon need string
+                    icon_path = icon_path[0]
+
+                    # print("new icon path:", icon_path)
                     item = QtWidgets.QListWidgetItem(file["filename"])
                     item.setIcon(QIcon(str(icon_path)))
+
                     self.list.addItem(item)
 
                 if not debug:

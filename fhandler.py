@@ -116,3 +116,9 @@ class DatabaseHanlder:
             "INSERT INTO Files (filename, filepath, previewpath) VALUES (?, ?, ?)",
             (file_name, file_path, preview_path),
         )
+
+    def get_previewpath(self, file):
+        self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))
+        previewpath = self.cursor.fetchone()
+        #print(previewpath)
+        return previewpath
