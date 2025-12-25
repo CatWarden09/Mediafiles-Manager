@@ -39,6 +39,8 @@ class FileHandler:
 
     # TODO merge with video thubmnail method and refactor so it works with filtered file list from the method above (can pass it from main)
     # because now we have 3 separate methods that do similar job with the same list at the same time
+
+    # TODO move the thumbnails folder to the program dir
     def create_image_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
         os.makedirs(save_path, exist_ok=True)
@@ -120,5 +122,5 @@ class DatabaseHanlder:
     def get_previewpath(self, file):
         self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))
         previewpath = self.cursor.fetchone()
-        #print(previewpath)
+        # print(previewpath)
         return previewpath

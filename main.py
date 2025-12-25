@@ -18,12 +18,41 @@ load_dotenv()
 debug = True
 
 
+class PreviewWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setMinimumWidth(300)
+
+        # create placeholder for the preview
+        self.image_preview = QtWidgets.QLabel()
+
+        # create table for the file info
+        self.table = QtWidgets.QFormLayout()
+        self.table.addRow("Имя файла:", QtWidgets.QLabel("THIS IS A TEST TEXT!"))
+        self.table.addRow("Путь к файлу:", QtWidgets.QLabel("THIS IS A TEST TEXT!"))
+
+        # add the main layout for the window
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        # set the test image
+        pixmap = QtGui.QPixmap(os.path.join(config.assign_script_dir(), "testicon.png")  )
+        self.image_preview.setPixmap(pixmap)
+
+        # add all the widgets
+        self.layout.addWidget(self.image_preview)
+        self.layout.addLayout(self.table)
+
+
+
 class MainWidget(QtWidgets.QWidget):
 
     def __init__(self):
+        super().__init__()
 
         self.fhandler = FileHandler(db)
-        super().__init__()
 
         self.is_folder_chosen = os.getenv("IS_FOLDER_CHOSEN", "False") == "True"
 
@@ -38,13 +67,21 @@ class MainWidget(QtWidgets.QWidget):
         self.list.setResizeMode(QListView.ResizeMode.Adjust)
         self.list.setGridSize(QSize(150, 150))
 
-        # add the main layout and all items
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addSpacing(10)
+        # create the file preview window
+        self.preview_window = PreviewWindow()
+
+        # add the files_list layout and all items
+        self.list_layout = QtWidgets.QVBoxLayout()
+        self.list_layout.addSpacing(10)
         if not self.is_folder_chosen or debug:
-            self.layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
-        self.layout.addSpacing(10)
-        self.layout.addWidget(self.list)
+            self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
+        self.list_layout.addSpacing(10)
+        self.list_layout.addWidget(self.list)
+
+        # create the main Hbox for all the widgets
+        self.layout = QtWidgets.QHBoxLayout(self)
+        self.layout.addLayout(self.list_layout)
+        self.layout.addWidget(self.preview_window)
 
         # connecting to the button click action
         self.button.clicked.connect(self.on_button_clicked)
