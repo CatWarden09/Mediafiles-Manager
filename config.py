@@ -1,7 +1,7 @@
 import sys
 import os
 
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 
 
 def assign_script_dir():
@@ -16,5 +16,5 @@ env_path = os.path.join(assign_script_dir(), ".env")
 
 
 def save_to_env(key, value):
-    with open(env_path, "a") as f:
+    with open(env_path, "a", encoding="utf-8") as f:
         f.write(f"\n{key}={value}")

@@ -44,8 +44,8 @@ class PreviewWindow(QtWidgets.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         # set the test image
-        pixmap = QtGui.QPixmap(os.path.join(config.assign_script_dir(), "testicon.png"))
-        self.image_preview.setPixmap(pixmap)
+        # pixmap = QtGui.QPixmap(os.path.join(config.assign_script_dir(), "testicon.png"))
+        # self.image_preview.setPixmap(pixmap)
 
         # add all the widgets
         self.layout.addWidget(self.image_preview)
@@ -63,7 +63,6 @@ class PreviewWindow(QtWidgets.QWidget):
 
 
 class MainWidget(QtWidgets.QWidget):
-
     def __init__(self):
         super().__init__()
 
@@ -107,6 +106,9 @@ class MainWidget(QtWidgets.QWidget):
         # connecting to the item click
         self.list.itemClicked.connect(self.on_current_item_selected)
 
+        if self.is_folder_chosen:
+            self.display_files_list()
+
     # item click event
     @QtCore.Slot()
     def on_current_item_selected(self):
@@ -141,16 +143,14 @@ class MainWidget(QtWidgets.QWidget):
             else:
                 self.fhandler.create_image_thumbnail(folder)
                 self.fhandler.create_video_thumbnail(folder)
-                # TODO: call a function with filename, which will go to the DB and get the thumbnail path via filename
+
                 for file in files_list:
 
                     icon_path = db.get_previewpath(file["filename"])
-                    # print("old icon path:", icon_path)
 
                     # convert the path to the first element of a tuple because SQLite returns a tuple with 1 element, and QIcon need string
                     icon_path = icon_path[0]
 
-                    # print("new icon path:", icon_path)
                     item = QtWidgets.QListWidgetItem(file["filename"])
                     item.setIcon(QIcon(str(icon_path)))
 
@@ -162,6 +162,21 @@ class MainWidget(QtWidgets.QWidget):
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
         db.save_changes()
+
+    def display_files_list(self):
+        files_list = db.get_all_filenames()
+        print(files_list)
+        for file in files_list:
+
+            icon_path = db.get_previewpath(file[0])
+
+            # convert the path to the first element of a tuple because SQLite returns a tuple with 1 element, and QIcon need string
+            icon_path = icon_path[0]
+
+            item = QtWidgets.QListWidgetItem(file[0])
+            item.setIcon(QIcon(str(icon_path)))
+
+            self.list.addItem(item)
 
 
 if __name__ == "__main__":

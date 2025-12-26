@@ -34,7 +34,7 @@ class FileHandler:
         for f in os.listdir(folder):
             if os.path.splitext(f)[1].lower() in allowed_types:
                 filtered.append({"filename": f, "file_path": os.path.join(folder, f)})
-
+                # most probably the file_path here and the dictionary is no longer needed since everything is in the DB
         return filtered
 
     # TODO merge with video thubmnail method and refactor so it works with filtered file list from the method above (can pass it from main)
@@ -75,9 +75,11 @@ class FileHandler:
                     )
                     .run()
                 )
-            file_path = os.path.join(folder, file)
-            preview_path = os.path.join(save_path, os.path.splitext(file)[0] + ".png")
-            self.db.save_to_database(file, file_path, preview_path)
+                file_path = os.path.join(folder, file)
+                preview_path = os.path.join(
+                    save_path, os.path.splitext(file)[0] + ".png"
+                )
+                self.db.save_to_database(file, file_path, preview_path)
 
 
 class DatabaseHanlder:
@@ -124,3 +126,8 @@ class DatabaseHanlder:
         previewpath = self.cursor.fetchone()
         # print(previewpath)
         return previewpath
+
+    def get_all_filenames(self):
+        self.cursor.execute("SELECT filename FROM Files")
+        files_list = self.cursor.fetchall()
+        return files_list
