@@ -26,6 +26,8 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # create placeholder for the preview
         self.image_preview = QtWidgets.QLabel()
+        self.image_preview.setFixedSize(256, 256)
+        self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
 
         # create table for the file info
         self.table = QtWidgets.QFormLayout()
@@ -38,13 +40,17 @@ class PreviewWindow(QtWidgets.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         # set the test image
-        pixmap = QtGui.QPixmap(os.path.join(config.assign_script_dir(), "testicon.png")  )
+        pixmap = QtGui.QPixmap(os.path.join(config.assign_script_dir(), "testicon.png"))
         self.image_preview.setPixmap(pixmap)
 
         # add all the widgets
         self.layout.addWidget(self.image_preview)
         self.layout.addLayout(self.table)
 
+    def apply_preview_icon(self, icon):
+        pixmap = icon.pixmap(256, 256)
+
+        self.image_preview.setPixmap(pixmap)
 
 
 class MainWidget(QtWidgets.QWidget):
@@ -85,6 +91,14 @@ class MainWidget(QtWidgets.QWidget):
 
         # connecting to the button click action
         self.button.clicked.connect(self.on_button_clicked)
+
+        # connecting to the item click
+        self.list.itemClicked.connect(self.on_current_item_selected)
+
+    @QtCore.Slot()
+    def on_current_item_selected(self):
+        preview_icon = self.list.currentItem().icon()
+        self.preview_window.apply_preview_icon(preview_icon)
 
     # button click event
     @QtCore.Slot()
