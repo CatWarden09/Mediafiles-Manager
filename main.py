@@ -20,9 +20,10 @@ debug = True
 
 class PreviewWindow(QtWidgets.QWidget):
     def __init__(self):
+
         super().__init__()
 
-        self.setMinimumWidth(300)
+        self.setFixedWidth(300)
 
         # create placeholder for the preview
         self.image_preview = QtWidgets.QLabel()
@@ -31,8 +32,11 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # create table for the file info
         self.table = QtWidgets.QFormLayout()
-        self.table.addRow("Имя файла:", QtWidgets.QLabel("THIS IS A TEST TEXT!"))
-        self.table.addRow("Путь к файлу:", QtWidgets.QLabel("THIS IS A TEST TEXT!"))
+        self.table_filename = QtWidgets.QLabel()
+        self.table_filepath = QtWidgets.QLabel()
+
+        self.table.addRow("Имя файла:", self.table_filename)
+        self.table.addRow("Путь к файлу:", self.table_filepath)
 
         # add the main layout for the window
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -47,8 +51,13 @@ class PreviewWindow(QtWidgets.QWidget):
         self.layout.addWidget(self.image_preview)
         self.layout.addLayout(self.table)
 
-    def apply_preview_icon(self, icon):
+    def apply_preview_data(self, icon, filename, filepath):
         pixmap = icon.pixmap(256, 256)
+        filename = filename[0:35] + "..." if len(filename) > 35 else filename
+        filepath = filepath[0:35] + "..." if len(filepath) > 35 else filepath
+
+        self.table_filename.setText(filename)
+        self.table_filepath.setText(filepath)
 
         self.image_preview.setPixmap(pixmap)
 
@@ -73,6 +82,9 @@ class MainWidget(QtWidgets.QWidget):
         self.list.setResizeMode(QListView.ResizeMode.Adjust)
         self.list.setGridSize(QSize(150, 150))
 
+        self.list.setDragEnabled(True)
+        self.list.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
+
         # create the file preview window
         self.preview_window = PreviewWindow()
 
@@ -95,15 +107,22 @@ class MainWidget(QtWidgets.QWidget):
         # connecting to the item click
         self.list.itemClicked.connect(self.on_current_item_selected)
 
+    # item click event
     @QtCore.Slot()
     def on_current_item_selected(self):
         preview_icon = self.list.currentItem().icon()
-        self.preview_window.apply_preview_icon(preview_icon)
+        preview_filename = self.list.currentItem().text()
+        preview_filepath = db.get_previewpath(preview_filename)
+        preview_filepath = preview_filepath[0]
+
+        self.preview_window.apply_preview_data(
+            preview_icon, preview_filename, preview_filepath
+        )
 
     # button click event
     @QtCore.Slot()
     def on_button_clicked(self):
-        db.connect_to_database()
+
         files_list = []
 
         files_dlg = QtWidgets.QFileDialog()
@@ -143,12 +162,12 @@ class MainWidget(QtWidgets.QWidget):
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
         db.save_changes()
-        db.close_connection()
 
 
 if __name__ == "__main__":
 
     db = DatabaseHanlder()
+    db.connect_to_database()
 
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
