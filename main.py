@@ -15,7 +15,27 @@ from pathlib import Path
 
 load_dotenv()
 
-debug = True
+debug = False
+
+
+class TagsWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+        # create the main tags layout
+        self.tags_group = QtWidgets.QButtonGroup(self)
+        self.tags_group.setExclusive(False)
+
+        self.tags_layout = QtWidgets.QGridLayout(self)
+
+
+    def add_tag(self, tag_name: str):
+
+        checkbox = QtWidgets.QCheckBox(tag_name)
+
+        self.tags_layout.addWidget(checkbox)
+        self.tags_group.addButton(checkbox)
+
 
 
 class PreviewWindow(QtWidgets.QWidget):
@@ -62,11 +82,15 @@ class PreviewWindow(QtWidgets.QWidget):
         self.image_preview.setPixmap(pixmap)
 
 
-class MainWidget(QtWidgets.QWidget):
+class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
         self.fhandler = FileHandler(db)
+        self.preview_window = PreviewWindow()
+        self.tags_window = TagsWindow()
+
+        self.main_layout = QtWidgets.QVBoxLayout(self)
 
         self.is_folder_chosen = os.getenv("IS_FOLDER_CHOSEN", "False") == "True"
 
@@ -84,22 +108,23 @@ class MainWidget(QtWidgets.QWidget):
         self.list.setDragEnabled(True)
         self.list.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
 
-        # create the file preview window
-        self.preview_window = PreviewWindow()
-
         # add the files_list layout and all items
         self.list_layout = QtWidgets.QVBoxLayout()
         self.list_layout.addSpacing(10)
         if not self.is_folder_chosen or debug:
             self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
+        else:
+            self.list_layout.addWidget(self.tags_window)
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.list)
 
-        # create the main Hbox for all the widgets
-        self.layout = QtWidgets.QHBoxLayout(self)
-        self.layout.addLayout(self.list_layout)
-        self.layout.addWidget(self.preview_window)
+        # create the Hbox for files list and file preview widgets and put it into the main Vbox
 
+        self.files_layout = QtWidgets.QHBoxLayout()
+        self.files_layout.addLayout(self.list_layout)
+        self.files_layout.addWidget(self.preview_window)
+
+        self.main_layout.addLayout(self.files_layout)
         # connecting to the button click action
         self.button.clicked.connect(self.on_button_clicked)
 
@@ -165,7 +190,7 @@ class MainWidget(QtWidgets.QWidget):
 
     def display_files_list(self):
         files_list = db.get_all_filenames()
-        print(files_list)
+        # print(files_list)
         for file in files_list:
 
             icon_path = db.get_previewpath(file[0])
@@ -187,11 +212,11 @@ if __name__ == "__main__":
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
 
-    widget = MainWidget()
-    widget.setWindowTitle(str("Media Manager v." + config.VERSION))
-    widget.setWindowIcon(QtGui.QIcon(str(icon_path)))
+    main_window = MainWindow()
+    main_window.setWindowTitle(str("Media Manager v." + config.VERSION))
+    main_window.setWindowIcon(QtGui.QIcon(str(icon_path)))
 
-    widget.resize(800, 600)
-    widget.show()
+    main_window.resize(800, 600)
+    main_window.show()
 
     sys.exit(app.exec())
