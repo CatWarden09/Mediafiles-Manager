@@ -59,6 +59,7 @@ class FileHandler:
 
     def create_video_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
+        # TODO add ffmpeg search in system\program dir
         FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
         for file in os.listdir(folder):
 
@@ -130,11 +131,21 @@ class DatabaseHandler:
             (file_name, file_path, preview_path),
         )
 
-    def save_tags_to_database(self, tag_name: str):
+    def save_tag_to_database(self, tag_name: str):
         self.cursor.execute(
             "INSERT INTO Tags (tagname) VALUES (?)",
             (tag_name,),
         )
+
+    def get_all_tagnames(self):
+        self.cursor.execute("SELECT tagname FROM Tags")
+        tags_list = self.cursor.fetchall()
+        return tags_list
+    
+    def tag_exists(self, tag_name):
+        self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))
+        return self.cursor.fetchone() is not None
+
 
     def get_previewpath(self, file):
         self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))

@@ -18,6 +18,66 @@ load_dotenv()
 debug = False
 
 
+class TagsSettingsWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+        # create the window layout
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+        self.buttons_layout = QtWidgets.QHBoxLayout()
+        self.tags_list = QtWidgets.QListWidget()
+
+        # create manage buttons
+        self.add_button = QtWidgets.QPushButton("Добавить тег")
+        self.delete_button = QtWidgets.QPushButton("Удалить тег")
+
+        # add widgets to the layouts
+        self.buttons_layout.addWidget(self.add_button)
+        self.buttons_layout.addWidget(self.delete_button)
+        self.main_layout.addLayout(self.buttons_layout)
+        self.main_layout.addWidget(self.tags_list)
+
+        # connect to buttons click
+        self.add_button.clicked.connect(self.on_add_button_clicked)
+        self.delete_button.clicked.connect(self.on_delete_button_clicked)
+
+    def add_tags_to_list(self, tag):
+        item = QtWidgets.QListWidgetItem(tag)
+
+        self.tags_list.addItem(item)
+
+    def show_tags_list(self):
+        self.tags_list.clear()
+
+        tags_list = db.get_all_tagnames()
+
+        for tag in tags_list:
+            item = QtWidgets.QListWidgetItem(tag[0])
+
+            self.tags_list.addItem(item)
+
+    # button click events
+    @QtCore.Slot()
+    def on_add_button_clicked(self):
+        tag_name, ok = QtWidgets.QInputDialog.getText(
+            self, "Новый тег", "Введите название тега"
+        )
+
+        if ok and tag_name:
+            if not db.tag_exists(tag_name):
+                db.save_tag_to_database(tag_name)
+                db.save_changes()
+                self.add_tags_to_list(tag_name)
+            else:
+                QtWidgets.QMessageBox.critical(
+                    self, "Ошибка", "Тег с таким названием уже добавлен!"
+                )
+
+    @QtCore.Slot()
+    def on_delete_button_clicked(self):
+        pass
+
+
 class TagsWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -87,6 +147,12 @@ class MainWindow(QtWidgets.QWidget):
         self.preview_window = PreviewWindow()
         self.tags_window = TagsWindow()
 
+        # create the tags settings window
+        self.tags_settings_window = TagsSettingsWindow()
+        self.tags_settings_window.setWindowIcon(QtGui.QIcon(str(icon_path)))
+        self.tags_settings_window.setWindowTitle("Настройки тегов")
+        self.tags_settings_window.resize(600, 400)
+
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
         self.is_folder_chosen = os.getenv("IS_FOLDER_CHOSEN", "False") == "True"
@@ -147,7 +213,8 @@ class MainWindow(QtWidgets.QWidget):
     # tags button click event
     @QtCore.Slot()
     def on_tags_button_clicked(self):
-        pass
+        self.tags_settings_window.show()
+        self.tags_settings_window.show_tags_list()
 
     # item click event
     @QtCore.Slot()
@@ -230,11 +297,12 @@ if __name__ == "__main__":
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
 
+    # create the main program window
     main_window = MainWindow()
     main_window.setWindowTitle(str("Media Manager v." + config.VERSION))
     main_window.setWindowIcon(QtGui.QIcon(str(icon_path)))
-
     main_window.resize(800, 600)
+
     main_window.show()
 
     sys.exit(app.exec())
