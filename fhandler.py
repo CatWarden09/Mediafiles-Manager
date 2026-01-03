@@ -59,6 +59,7 @@ class FileHandler:
 
     def create_video_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
+        FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
         for file in os.listdir(folder):
 
             if os.path.splitext(file)[1].lower() in allowed_video_formats:
@@ -73,7 +74,7 @@ class FileHandler:
                         vframes=1,
                         n=None,
                     )
-                    .run()
+                    .run(cmd=FFMPEG_PATH)
                 )
                 file_path = os.path.join(folder, file)
                 preview_path = os.path.join(
@@ -82,7 +83,7 @@ class FileHandler:
                 self.db.save_to_database(file, file_path, preview_path)
 
 
-class DatabaseHanlder:
+class DatabaseHandler:
     def __init__(self):
 
         folder_path = os.path.join(config.assign_script_dir(), "fhandler_data")
@@ -96,12 +97,20 @@ class DatabaseHanlder:
         CREATE TABLE IF NOT EXISTS Files (
         id INTEGER PRIMARY KEY,
         filename TEXT NOT NULL,
-        filepath TEXT NOT NULL,
+        filepath TEXT NOT NULL UNIQUE,
         previewpath TEXT NOT NULL
         )              
         """
         )
 
+        self.cursor.execute(
+            """
+        CREATE TABLE IF NOT EXISTS Tags(
+        id INTEGER PRIMARY KEY,
+        tagname TEXT NOT NULL UNIQUE)
+        """
+        )
+        ## TODO add same names exceptions
         self.save_changes()
 
     def connect_to_database(self):
@@ -119,6 +128,12 @@ class DatabaseHanlder:
         self.cursor.execute(
             "INSERT INTO Files (filename, filepath, previewpath) VALUES (?, ?, ?)",
             (file_name, file_path, preview_path),
+        )
+
+    def save_tags_to_database(self, tag_name: str):
+        self.cursor.execute(
+            "INSERT INTO Tags (tagname) VALUES (?)",
+            (tag_name,),
         )
 
     def get_previewpath(self, file):

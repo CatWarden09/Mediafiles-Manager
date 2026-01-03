@@ -3,7 +3,7 @@ import sys
 import config
 
 from dotenv import load_dotenv
-from fhandler import FileHandler, DatabaseHanlder
+from fhandler import FileHandler, DatabaseHandler
 
 
 from PySide6 import QtCore, QtWidgets, QtGui
@@ -28,14 +28,12 @@ class TagsWindow(QtWidgets.QWidget):
 
         self.tags_layout = QtWidgets.QGridLayout(self)
 
-
     def add_tag(self, tag_name: str):
 
         checkbox = QtWidgets.QCheckBox(tag_name)
 
         self.tags_layout.addWidget(checkbox)
         self.tags_group.addButton(checkbox)
-
 
 
 class PreviewWindow(QtWidgets.QWidget):
@@ -86,7 +84,6 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        self.fhandler = FileHandler(db)
         self.preview_window = PreviewWindow()
         self.tags_window = TagsWindow()
 
@@ -94,9 +91,13 @@ class MainWindow(QtWidgets.QWidget):
 
         self.is_folder_chosen = os.getenv("IS_FOLDER_CHOSEN", "False") == "True"
 
-        # create button
+        # create add folder button
         self.button = QtWidgets.QPushButton("Выбрать папку")
         self.button.setMaximumSize(200, 50)
+
+        # create tags settings button
+        self.tags_button = QtWidgets.QPushButton("Настройка тегов")
+        self.tags_button.setMaximumSize(200, 50)
 
         # create a widget for the files list
         self.list = QtWidgets.QListWidget()
@@ -108,16 +109,17 @@ class MainWindow(QtWidgets.QWidget):
         self.list.setDragEnabled(True)
         self.list.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
 
-        # add the files_list layout and all items
+        # add the files_list layout and all items, hide tags button and window
         self.list_layout = QtWidgets.QVBoxLayout()
         self.list_layout.addSpacing(10)
-        if not self.is_folder_chosen or debug:
-            self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
-        else:
-            self.list_layout.addWidget(self.tags_window)
+        self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
+        self.list_layout.addWidget(self.tags_button, 0, QtCore.Qt.AlignHCenter)
+        self.list_layout.addWidget(self.tags_window)
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.list)
 
+        self.tags_button.hide()
+        self.tags_window.hide()
         # create the Hbox for files list and file preview widgets and put it into the main Vbox
 
         self.files_layout = QtWidgets.QHBoxLayout()
@@ -125,14 +127,27 @@ class MainWindow(QtWidgets.QWidget):
         self.files_layout.addWidget(self.preview_window)
 
         self.main_layout.addLayout(self.files_layout)
+
         # connecting to the button click action
         self.button.clicked.connect(self.on_button_clicked)
 
         # connecting to the item click
         self.list.itemClicked.connect(self.on_current_item_selected)
 
+        # connecting to the tags button click
+        self.tags_button.clicked.connect(self.on_tags_button_clicked)
+
+        # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
+            self.button.hide()
+            self.tags_button.show()
+            self.tags_window.show()
             self.display_files_list()
+
+    # tags button click event
+    @QtCore.Slot()
+    def on_tags_button_clicked(self):
+        pass
 
     # item click event
     @QtCore.Slot()
@@ -158,7 +173,7 @@ class MainWindow(QtWidgets.QWidget):
         if folder:
             # TODO make a separate function
 
-            files_list = self.fhandler.clear_files_list(folder)
+            files_list = fhandler.clear_files_list(folder)
             if files_list == []:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -166,8 +181,8 @@ class MainWindow(QtWidgets.QWidget):
                     "Выбранная папка пуста или не содержит файлы поддерживаемых форматов.",
                 )
             else:
-                self.fhandler.create_image_thumbnail(folder)
-                self.fhandler.create_video_thumbnail(folder)
+                fhandler.create_image_thumbnail(folder)
+                fhandler.create_video_thumbnail(folder)
 
                 for file in files_list:
 
@@ -180,9 +195,11 @@ class MainWindow(QtWidgets.QWidget):
                     item.setIcon(QIcon(str(icon_path)))
 
                     self.list.addItem(item)
-
+                # hide add folder button and show tags button and window
                 if not debug:
-                    self.button.deleteLater()
+                    self.button.hide()
+                    self.tags_button.show()
+                    self.tags_window.show()
 
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
@@ -206,8 +223,9 @@ class MainWindow(QtWidgets.QWidget):
 
 if __name__ == "__main__":
 
-    db = DatabaseHanlder()
+    db = DatabaseHandler()
     db.connect_to_database()
+    fhandler = FileHandler(db)
 
     icon_path = Path(__file__).parent / "icon.ico"
     app = QtWidgets.QApplication([])
