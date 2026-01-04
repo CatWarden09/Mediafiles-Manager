@@ -130,22 +130,28 @@ class DatabaseHandler:
             "INSERT INTO Files (filename, filepath, previewpath) VALUES (?, ?, ?)",
             (file_name, file_path, preview_path),
         )
+        
 
     def save_tag_to_database(self, tag_name: str):
         self.cursor.execute(
             "INSERT INTO Tags (tagname) VALUES (?)",
             (tag_name,),
         )
+        self.save_changes()
+    
+    def delete_tag_from_database(self, tag_hame: str):
+        self.cursor.execute("DELETE FROM Tags WHERE tagname = ?", (tag_hame,))
+        self.save_changes()
 
     def get_all_tagnames(self):
         self.cursor.execute("SELECT tagname FROM Tags")
         tags_list = self.cursor.fetchall()
         return tags_list
-    
-    def tag_exists(self, tag_name):
+
+    # check if the tag is already in the table and return True if the DB query returns !=Null, return False otherwise
+    def tag_exists(self, tag_name: str) -> bool:
         self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))
         return self.cursor.fetchone() is not None
-
 
     def get_previewpath(self, file):
         self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))

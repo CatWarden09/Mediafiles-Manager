@@ -18,6 +18,21 @@ load_dotenv()
 debug = False
 
 
+class ErrorWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowIcon(QtGui.QIcon(str(icon_path)))
+
+        self.message_box = QtWidgets.QMessageBox(self)
+        self.message_box.setIcon(QtWidgets.QMessageBox.Warning)
+
+    def show_error_message(self, message: str):
+        self.message_box.setWindowTitle("Ошибка!")
+        self.message_box.setText(message)
+        self.message_box.exec()
+
+
 class TagsSettingsWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -46,7 +61,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
 
         self.tags_list.addItem(item)
 
-    def show_tags_list(self):
+    def update_tags_list(self):
         self.tags_list.clear()
 
         tags_list = db.get_all_tagnames()
@@ -63,19 +78,28 @@ class TagsSettingsWindow(QtWidgets.QWidget):
             self, "Новый тег", "Введите название тега"
         )
 
-        if ok and tag_name:
-            if not db.tag_exists(tag_name):
-                db.save_tag_to_database(tag_name)
-                db.save_changes()
-                self.add_tags_to_list(tag_name)
+        if ok:
+            if tag_name.strip():
+                if not db.tag_exists(tag_name):
+                    db.save_tag_to_database(tag_name)
+                    self.add_tags_to_list(tag_name)
+                else:
+                    error_window.show_error_message(
+                        "Тег с таким названием уже добавлен!"
+                    )
             else:
-                QtWidgets.QMessageBox.critical(
-                    self, "Ошибка", "Тег с таким названием уже добавлен!"
-                )
+                error_window.show_error_message("Укажите название тега!")
 
     @QtCore.Slot()
     def on_delete_button_clicked(self):
-        pass
+        item = self.tags_list.currentItem()
+
+        if item is None:
+            error_window.show_error_message("Не выбран тег для удаления!")
+        else:
+            tag = item.text()
+            db.delete_tag_from_database(tag)
+            self.update_tags_list()
 
 
 class TagsWindow(QtWidgets.QWidget):
@@ -214,7 +238,7 @@ class MainWindow(QtWidgets.QWidget):
     @QtCore.Slot()
     def on_tags_button_clicked(self):
         self.tags_settings_window.show()
-        self.tags_settings_window.show_tags_list()
+        self.tags_settings_window.update_tags_list()
 
     # item click event
     @QtCore.Slot()
@@ -290,12 +314,13 @@ class MainWindow(QtWidgets.QWidget):
 
 if __name__ == "__main__":
 
+    icon_path = Path(__file__).parent / "icon.ico"
+    app = QtWidgets.QApplication([])
+
     db = DatabaseHandler()
     db.connect_to_database()
     fhandler = FileHandler(db)
-
-    icon_path = Path(__file__).parent / "icon.ico"
-    app = QtWidgets.QApplication([])
+    error_window = ErrorWindow()
 
     # create the main program window
     main_window = MainWindow()
