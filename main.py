@@ -28,7 +28,7 @@ class ErrorWindow(QtWidgets.QWidget):
         self.message_box.setIcon(QtWidgets.QMessageBox.Warning)
 
     def show_error_message(self, message: str):
-        self.message_box.setWindowTitle("Ошибка!")
+        self.message_box.setWindowTitle("Ошибка")
         self.message_box.setText(message)
         self.message_box.exec()
 
@@ -83,6 +83,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
                 if not db.tag_exists(tag_name):
                     db.save_tag_to_database(tag_name)
                     self.add_tags_to_list(tag_name)
+                    tags_list.update_tags_list()
                 else:
                     error_window.show_error_message(
                         "Тег с таким названием уже добавлен!"
@@ -95,29 +96,41 @@ class TagsSettingsWindow(QtWidgets.QWidget):
         item = self.tags_list.currentItem()
 
         if item is None:
-            error_window.show_error_message("Не выбран тег для удаления!")
+            error_window.show_error_message("Выберите тег для удаления!")
         else:
             tag = item.text()
             db.delete_tag_from_database(tag)
             self.update_tags_list()
+            tags_list.update_tags_list()
 
 
-class TagsWindow(QtWidgets.QWidget):
+class TagsList(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
         # create the main tags layout
-        self.tags_group = QtWidgets.QButtonGroup(self)
-        self.tags_group.setExclusive(False)
+        self.tags_layout = QtWidgets.QVBoxLayout(self)
 
-        self.tags_layout = QtWidgets.QGridLayout(self)
+        self.tags_widget = QtWidgets.QListWidget()
 
-    def add_tag(self, tag_name: str):
+        self.tags_layout.addWidget(self.tags_widget)
 
-        checkbox = QtWidgets.QCheckBox(tag_name)
+    def update_tags_list(self):
+        self.tags_widget.clear()
 
-        self.tags_layout.addWidget(checkbox)
-        self.tags_group.addButton(checkbox)
+        tags_list = db.get_all_tagnames()
+
+        for tag in tags_list:
+
+            checkbox = QtWidgets.QListWidgetItem(tag[0])
+
+            # | is a bitwise OR to add the item flag without changing all the existing flags
+            # it compares every bit in flags() and assigns 1 to the byte at ItemIsUserCheckable position
+            # flags() returns a combination of all the item flags enum constants as an int (bit mask)
+            checkbox.setFlags(checkbox.flags() | QtCore.Qt.ItemIsUserCheckable)
+
+            checkbox.setCheckState(QtCore.Qt.Unchecked)
+            self.tags_widget.addItem(checkbox)
 
 
 class PreviewWindow(QtWidgets.QWidget):
@@ -169,7 +182,6 @@ class MainWindow(QtWidgets.QWidget):
         super().__init__()
 
         self.preview_window = PreviewWindow()
-        self.tags_window = TagsWindow()
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow()
@@ -204,14 +216,14 @@ class MainWindow(QtWidgets.QWidget):
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
         self.list_layout.addWidget(self.tags_button, 0, QtCore.Qt.AlignHCenter)
-        self.list_layout.addWidget(self.tags_window)
+        self.list_layout.addWidget(tags_list)
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.list)
 
         self.tags_button.hide()
-        self.tags_window.hide()
-        # create the Hbox for files list and file preview widgets and put it into the main Vbox
+        tags_list.hide()
 
+        # create the Hbox for files list and file preview widgets and put it into the main Vbox
         self.files_layout = QtWidgets.QHBoxLayout()
         self.files_layout.addLayout(self.list_layout)
         self.files_layout.addWidget(self.preview_window)
@@ -231,7 +243,8 @@ class MainWindow(QtWidgets.QWidget):
         if self.is_folder_chosen:
             self.button.hide()
             self.tags_button.show()
-            self.tags_window.show()
+            tags_list.show()
+            tags_list.update_tags_list()
             self.display_files_list()
 
     # tags button click event
@@ -290,7 +303,7 @@ class MainWindow(QtWidgets.QWidget):
                 if not debug:
                     self.button.hide()
                     self.tags_button.show()
-                    self.tags_window.show()
+                    tags_list.show()
 
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
@@ -319,8 +332,10 @@ if __name__ == "__main__":
 
     db = DatabaseHandler()
     db.connect_to_database()
+
     fhandler = FileHandler(db)
     error_window = ErrorWindow()
+    tags_list = TagsList()
 
     # create the main program window
     main_window = MainWindow()
