@@ -118,8 +118,8 @@ class DatabaseHandler:
         file_id INTEGER NOT NULL,
         tag_id INTEGER NOT NULL,
         PRIMARY KEY (file_id, tag_id),
-        FOREIGN KEY (file_id) REFERENCES Files(id),
-        FOREIGN KEY (tag_id) REFERENCES Tags(id)
+        FOREIGN KEY (file_id) REFERENCES Files(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES Tags(id) ON DELETE CASCADE
         )
         """
         )
@@ -195,7 +195,7 @@ class DatabaseHandler:
                 (tag, item),
             )
         self.save_changes()
-        
+
     # check if the tag is already in the table and return True if the DB query returns !=Null, return False otherwise
     def tag_exists(self, tag_name: str) -> bool:
         self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))

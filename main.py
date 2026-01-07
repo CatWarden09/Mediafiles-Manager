@@ -34,6 +34,7 @@ class ErrorWindow(QtWidgets.QWidget):
 
 
 class TagsSettingsWindow(QtWidgets.QWidget):
+    # TODO add confirm window when deleting a tag
     def __init__(self):
         super().__init__()
 
@@ -189,7 +190,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
             db.save_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
         else:
-            error_window.show_error_message("Не выбран ни один тег!")
+            error_window.show_error_message("Не выбран ни один тег для добавления!")
 
     @QtCore.Slot()
     def on_delete_button_clicked(self):
