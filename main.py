@@ -120,7 +120,6 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         # hide the parent's tags list because here we need 2 separate tag lists
         self.tags_list.hide()
 
-
         # create a VBox to separate lists labels and the lists themselves
         self.main_vbox = QtWidgets.QVBoxLayout()
 
@@ -134,13 +133,17 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         # create a Hbox for 2 tags lists
         self.list_hbox = QtWidgets.QHBoxLayout()
         self.common_tags_list = QtWidgets.QListWidget()
-        self.current_tags_list = QtWidgets.QListView()
+        self.current_tags_list = QtWidgets.QListWidget()
+        self.common_tags_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.MultiSelection
+        )
+        self.current_tags_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.MultiSelection
+        )
 
         # add common and current tags lists to the tags list layout
         self.list_hbox.addWidget(self.common_tags_list)
         self.list_hbox.addWidget(self.current_tags_list)
-
-
 
         # place the Hboxes inside the main Vbox
         self.main_vbox.addLayout(self.labels_hbox)
@@ -149,16 +152,26 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         # add the tags list layout to the main layout
         self.main_layout.addLayout(self.main_vbox)
 
-    def update_tags_list(self):
-        return
-        self.tags_list.clear()
+    def set_tags_list(self):
+        current_item = self.main_window.get_current_item()
 
-        tags_list = []
+        self.common_tags_list.clear()
+        self.current_tags_list.clear()
 
+        self.current_tags_tuple = db.get_current_item_tags(current_item)
+        self.common_tags_tuple = [
+            tag for tag in db.get_all_tagnames() if tag not in self.current_tags_tuple
+        ]
+
+        self.update_lists(self.current_tags_list, self.current_tags_tuple)
+        self.update_lists(self.common_tags_list, self.common_tags_tuple)
+
+    # update both lists using the same method to avoid code duplication
+    def update_lists(self, target_list, tags_list):
         for tag in tags_list:
             item = QtWidgets.QListWidgetItem(tag[0])
 
-            self.tags_list.addItem(item)
+            target_list.addItem(item)
 
     @QtCore.Slot()
     def on_add_button_clicked(self):
@@ -169,6 +182,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         db.save_current_item_tags(current_item, tags_list)
 
         db.save_changes()
+
     @QtCore.Slot()
     def on_delete_button_clicked(self):
         pass
@@ -274,6 +288,7 @@ class PreviewWindow(QtWidgets.QWidget):
     def on_tags_settings_button_clicked(self):
         if self.main_window.get_current_item() is not None:
             self.tags_settings_window.show()
+            self.tags_settings_window.set_tags_list()
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -284,7 +299,6 @@ class MainWindow(QtWidgets.QWidget):
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow()
-
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -350,7 +364,6 @@ class MainWindow(QtWidgets.QWidget):
             return self.list.currentItem().text()
         else:
             error_window.show_error_message("Не выбран ни один файл!")
-
 
     # tags button click event
     @QtCore.Slot()

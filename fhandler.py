@@ -162,8 +162,25 @@ class DatabaseHandler:
         tags_list = self.cursor.fetchall()
         return tags_list
 
-    def get_current_item_tags(self):
-        pass
+    # Get all tag names assigned to a file:
+    # 1. Start from Tags table
+    # 2. Join Files_tags to find tag-file links
+    # 3. Join Files to know which file each tag belongs to
+    # 4. Filter by file name
+    def get_current_item_tags(self, item):
+        self.cursor.execute(
+            """
+            SELECT t.tagname
+            FROM Tags t
+            
+            JOIN Files_tags ft on ft.tag_id = t.id
+            JOIN Files f ON ft.file_id = f.id
+            WHERE f.filename = ?
+
+        """,
+            (item,),
+        )
+        return self.cursor.fetchall()
 
     def save_current_item_tags(self, item, tags_list):
         for tag in tags_list:
