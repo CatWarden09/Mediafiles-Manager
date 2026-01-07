@@ -1,7 +1,7 @@
 import sys
 import os
 
-VERSION = "0.5.1"
+VERSION = "0.5.2"
 
 
 def assign_script_dir():

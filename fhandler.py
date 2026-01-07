@@ -175,3 +175,8 @@ class DatabaseHandler:
         self.cursor.execute("SELECT filename FROM Files")
         files_list = self.cursor.fetchall()
         return files_list
+
+    def get_filepath(self, file):
+        self.cursor.execute("SELECT filepath FROM Files where filename = ?", (file,))
+        filepath = self.cursor.fetchone()
+        return filepath

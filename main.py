@@ -37,6 +37,10 @@ class TagsSettingsWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
+        self.setWindowIcon(QtGui.QIcon(str(icon_path)))
+        self.setWindowTitle("Настройки тегов")
+        self.resize(600, 400)
+
         # create the window layout
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.buttons_layout = QtWidgets.QHBoxLayout()
@@ -104,6 +108,23 @@ class TagsSettingsWindow(QtWidgets.QWidget):
             tags_list.update_tags_list()
 
 
+class ItemTagsSettingsWindow(TagsSettingsWindow):
+    def __init__(self, main_window):
+        super().__init__()
+        self.setWindowTitle("Изменить теги")
+
+    def update_tags_list(self):
+        pass
+
+    @QtCore.Slot()
+    def on_add_button_clicked(self):
+        current_item = main_window.get_current_item()
+
+    @QtCore.Slot()
+    def on_delete_button_clicked(self):
+        pass
+
+
 class TagsList(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -134,9 +155,11 @@ class TagsList(QtWidgets.QWidget):
 
 
 class PreviewWindow(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, main_window):
 
         super().__init__()
+
+        self.tags_settings_window = ItemTagsSettingsWindow(main_window)
 
         self.setFixedWidth(300)
 
@@ -197,19 +220,19 @@ class PreviewWindow(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_tags_settings_button_clicked(self):
-        pass
+        if main_window.get_current_item() is not None:
+            self.tags_settings_window.show()
+
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        self.preview_window = PreviewWindow()
+        self.preview_window = PreviewWindow(main_window=self)
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow()
-        self.tags_settings_window.setWindowIcon(QtGui.QIcon(str(icon_path)))
-        self.tags_settings_window.setWindowTitle("Настройки тегов")
-        self.tags_settings_window.resize(600, 400)
+
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -269,6 +292,14 @@ class MainWindow(QtWidgets.QWidget):
             tags_list.update_tags_list()
             self.display_files_list()
 
+    def get_current_item(self):
+        current_item = self.list.currentItem()
+        if current_item:
+            return self.list.currentItem().text
+        else:
+            error_window.show_error_message("Не выбран ни один файл!")
+
+
     # tags button click event
     @QtCore.Slot()
     def on_tags_button_clicked(self):
@@ -280,7 +311,7 @@ class MainWindow(QtWidgets.QWidget):
     def on_current_item_selected(self):
         preview_icon = self.list.currentItem().icon()
         preview_filename = self.list.currentItem().text()
-        preview_filepath = db.get_previewpath(preview_filename)
+        preview_filepath = db.get_filepath(preview_filename)
         preview_filepath = preview_filepath[0]
 
         self.preview_window.apply_preview_data(
