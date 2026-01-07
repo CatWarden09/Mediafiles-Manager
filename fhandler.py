@@ -111,13 +111,26 @@ class DatabaseHandler:
         tagname TEXT NOT NULL UNIQUE)
         """
         )
-        ## TODO add same names exceptions
+
+        self.cursor.execute(
+            """
+        CREATE TABLE IF NOT EXISTS Files_tags(
+        file_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY (file_id, tag_id),
+        FOREIGN KEY (file_id) REFERENCES Files(id),
+        FOREIGN KEY (tag_id) REFERENCES Tags(id)
+        )
+        """
+        )
+
         self.save_changes()
 
     def connect_to_database(self):
 
         self.connection = sqlite3.connect(self.db_path)
         self.cursor = self.connection.cursor()
+        self.cursor.execute("PRAGMA foreign_keys = ON;")
 
     def save_changes(self):
         self.connection.commit()
@@ -130,7 +143,6 @@ class DatabaseHandler:
             "INSERT INTO Files (filename, filepath, previewpath) VALUES (?, ?, ?)",
             (file_name, file_path, preview_path),
         )
-        
 
     def save_tag_to_database(self, tag_name: str):
         self.cursor.execute(
@@ -138,7 +150,7 @@ class DatabaseHandler:
             (tag_name,),
         )
         self.save_changes()
-    
+
     def delete_tag_from_database(self, tag_hame: str):
         self.cursor.execute("DELETE FROM Tags WHERE tagname = ?", (tag_hame,))
         self.save_changes()

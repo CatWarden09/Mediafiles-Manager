@@ -140,6 +140,10 @@ class PreviewWindow(QtWidgets.QWidget):
 
         self.setFixedWidth(300)
 
+        # create tags settings button
+        self.tags_settings_button = QtWidgets.QPushButton("Изменить теги")
+        self.item_description_button = QtWidgets.QPushButton("Изменить описание")
+
         # create placeholder for the preview
         self.image_preview = QtWidgets.QLabel()
         self.image_preview.setFixedSize(256, 256)
@@ -149,25 +153,34 @@ class PreviewWindow(QtWidgets.QWidget):
         self.table = QtWidgets.QFormLayout()
         self.table_filename = QtWidgets.QLabel()
         self.table_filepath = QtWidgets.QLabel()
+        self.table_filetags = QtWidgets.QLabel()
 
         self.table.addRow("Имя файла:", self.table_filename)
         self.table.addRow("Путь к файлу:", self.table_filepath)
+        self.table.addRow("Список тегов:", self.table_filetags)
 
         # add the main layout for the window
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setSpacing(3)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # set the test image
-        # pixmap = QtGui.QPixmap(os.path.join(config.assign_script_dir(), "testicon.png"))
-        # self.image_preview.setPixmap(pixmap)
-
         # add all the widgets
         self.layout.addWidget(self.image_preview)
         self.layout.addLayout(self.table)
+        self.layout.addWidget(self.tags_settings_button)
+        self.layout.addWidget(self.item_description_button)
+
+        # connect to the buttons clicked signals
+        self.tags_settings_button.clicked.connect(self.on_tags_settings_button_clicked)
 
     def apply_preview_data(self, icon, filename, filepath):
+        # TODO add files description and search by it
+
         pixmap = icon.pixmap(256, 256)
+
+        # update the tags list for the current selected item
+        self.update_item_tags_list(filename)
+
         filename = filename[0:35] + "..." if len(filename) > 35 else filename
         filepath = filepath[0:35] + "..." if len(filepath) > 35 else filepath
 
@@ -176,6 +189,15 @@ class PreviewWindow(QtWidgets.QWidget):
 
         self.image_preview.setPixmap(pixmap)
 
+    def update_item_tags_list(self, filename):
+        return
+        tags_list = ("test", "test_1", "test_2")
+        list_unpacked = ", ".join(tags_list)
+        self.table_filetags.setText(list_unpacked)
+
+    @QtCore.Slot()
+    def on_tags_settings_button_clicked(self):
+        pass
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self):
