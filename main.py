@@ -114,7 +114,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         self.setWindowTitle("Изменить теги")
         self.main_window = main_window
 
-        self.common_tags_list_label = QtWidgets.QLabel("Все теги:")
+        self.common_tags_list_label = QtWidgets.QLabel("Доступные теги:")
         self.current_tags_list_label = QtWidgets.QLabel("Теги выбранного файла:")
 
         # hide the parent's tags list because here we need 2 separate tag lists
@@ -153,7 +153,11 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         self.main_layout.addLayout(self.main_vbox)
 
     def set_tags_list(self):
-        current_item = self.main_window.get_current_item()
+        # prepare both tags list for display
+        # define current selected item, then get tags_list from the DB and make 2 tuples for current item tags and available tags accordinly
+        # clear both lists to avoid tags duplication on next settings window openings
+        # after lists are ready, call update_lists function to display both lists in the current item tags settings window
+        current_item = self.main_window.get_current_item().text()
 
         self.common_tags_list.clear()
         self.current_tags_list.clear()
@@ -175,13 +179,17 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
 
     @QtCore.Slot()
     def on_add_button_clicked(self):
-        return
-        current_item = self.main_window.get_current_item()
-        tags_list = ("test", "test1", "test2")
+        # get current selected item from the main window and current selected tags from available tags list
+        # and save the selected tags for the selected file in the DB
+        current_item = self.main_window.get_current_item().text()
+        selected_tags_list = self.common_tags_list.selectedItems()
 
-        db.save_current_item_tags(current_item, tags_list)
-
-        db.save_changes()
+        if selected_tags_list != []:
+            selected_tags = [tag.text() for tag in selected_tags_list]
+            db.save_current_item_tags(current_item, selected_tags)
+            self.set_tags_list()
+        else:
+            error_window.show_error_message("Не выбран ни один тег!")
 
     @QtCore.Slot()
     def on_delete_button_clicked(self):
@@ -361,7 +369,7 @@ class MainWindow(QtWidgets.QWidget):
     def get_current_item(self):
         current_item = self.list.currentItem()
         if current_item:
-            return self.list.currentItem().text()
+            return self.list.currentItem()
         else:
             error_window.show_error_message("Не выбран ни один файл!")
 

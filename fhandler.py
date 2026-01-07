@@ -194,7 +194,8 @@ class DatabaseHandler:
                 """,
                 (tag, item),
             )
-
+        self.save_changes()
+        
     # check if the tag is already in the table and return True if the DB query returns !=Null, return False otherwise
     def tag_exists(self, tag_name: str) -> bool:
         self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))
