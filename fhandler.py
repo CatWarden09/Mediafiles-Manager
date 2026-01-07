@@ -130,6 +130,8 @@ class DatabaseHandler:
 
         self.connection = sqlite3.connect(self.db_path)
         self.cursor = self.connection.cursor()
+
+        # need to activate foreign_keys on every DB connection
         self.cursor.execute("PRAGMA foreign_keys = ON;")
 
     def save_changes(self):
@@ -159,6 +161,22 @@ class DatabaseHandler:
         self.cursor.execute("SELECT tagname FROM Tags")
         tags_list = self.cursor.fetchall()
         return tags_list
+
+    def get_current_item_tags(self):
+        pass
+
+    def save_current_item_tags(self, item, tags_list):
+        for tag in tags_list:
+            self.cursor.execute(
+                """INSERT OR IGNORE INTO Files_tags (file_id, tag_id)
+                SELECT f.id, t.id
+                FROM Files f
+                JOIN Tags t ON t.tagname = ?
+                WHERE f.filename = ?
+                
+                """,
+                (tag, item),
+            )
 
     # check if the tag is already in the table and return True if the DB query returns !=Null, return False otherwise
     def tag_exists(self, tag_name: str) -> bool:

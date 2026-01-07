@@ -112,17 +112,68 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
     def __init__(self, main_window):
         super().__init__()
         self.setWindowTitle("Изменить теги")
+        self.main_window = main_window
+
+        self.common_tags_list_label = QtWidgets.QLabel("Все теги:")
+        self.current_tags_list_label = QtWidgets.QLabel("Теги выбранного файла:")
+
+        # hide the parent's tags list because here we need 2 separate tag lists
+        self.tags_list.hide()
+
+
+        # create a VBox to separate lists labels and the lists themselves
+        self.main_vbox = QtWidgets.QVBoxLayout()
+
+        # create an HBox for lists labels
+        self.labels_hbox = QtWidgets.QHBoxLayout()
+
+        # add the lists labels to their Hbox
+        self.labels_hbox.addWidget(self.common_tags_list_label)
+        self.labels_hbox.addWidget(self.current_tags_list_label)
+
+        # create a Hbox for 2 tags lists
+        self.list_hbox = QtWidgets.QHBoxLayout()
+        self.common_tags_list = QtWidgets.QListWidget()
+        self.current_tags_list = QtWidgets.QListView()
+
+        # add common and current tags lists to the tags list layout
+        self.list_hbox.addWidget(self.common_tags_list)
+        self.list_hbox.addWidget(self.current_tags_list)
+
+
+
+        # place the Hboxes inside the main Vbox
+        self.main_vbox.addLayout(self.labels_hbox)
+        self.main_vbox.addLayout(self.list_hbox)
+
+        # add the tags list layout to the main layout
+        self.main_layout.addLayout(self.main_vbox)
 
     def update_tags_list(self):
-        pass
+        return
+        self.tags_list.clear()
+
+        tags_list = []
+
+        for tag in tags_list:
+            item = QtWidgets.QListWidgetItem(tag[0])
+
+            self.tags_list.addItem(item)
 
     @QtCore.Slot()
     def on_add_button_clicked(self):
-        current_item = main_window.get_current_item()
+        return
+        current_item = self.main_window.get_current_item()
+        tags_list = ("test", "test1", "test2")
 
+        db.save_current_item_tags(current_item, tags_list)
+
+        db.save_changes()
     @QtCore.Slot()
     def on_delete_button_clicked(self):
         pass
+
+        # db.save_changes()
 
 
 class TagsList(QtWidgets.QWidget):
@@ -160,6 +211,7 @@ class PreviewWindow(QtWidgets.QWidget):
         super().__init__()
 
         self.tags_settings_window = ItemTagsSettingsWindow(main_window)
+        self.main_window = main_window
 
         self.setFixedWidth(300)
 
@@ -220,7 +272,7 @@ class PreviewWindow(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_tags_settings_button_clicked(self):
-        if main_window.get_current_item() is not None:
+        if self.main_window.get_current_item() is not None:
             self.tags_settings_window.show()
 
 
@@ -295,7 +347,7 @@ class MainWindow(QtWidgets.QWidget):
     def get_current_item(self):
         current_item = self.list.currentItem()
         if current_item:
-            return self.list.currentItem().text
+            return self.list.currentItem().text()
         else:
             error_window.show_error_message("Не выбран ни один файл!")
 
