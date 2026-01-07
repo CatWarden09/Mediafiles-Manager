@@ -35,8 +35,10 @@ class ErrorWindow(QtWidgets.QWidget):
 
 class TagsSettingsWindow(QtWidgets.QWidget):
     # TODO add confirm window when deleting a tag
-    def __init__(self):
+    def __init__(self, tags_list):
         super().__init__()
+
+        self.main_tags_list = tags_list
 
         self.setWindowIcon(QtGui.QIcon(str(icon_path)))
         self.setWindowTitle("Настройки тегов")
@@ -88,7 +90,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
                 if not db.tag_exists(tag_name):
                     db.save_tag_to_database(tag_name)
                     self.add_tags_to_list(tag_name)
-                    tags_list.update_tags_list()
+                    self.main_tags_list.update_tags_list()
                 else:
                     error_window.show_error_message(
                         "Тег с таким названием уже добавлен!"
@@ -106,12 +108,12 @@ class TagsSettingsWindow(QtWidgets.QWidget):
             tag = item.text()
             db.delete_tag_from_database(tag)
             self.update_tags_list()
-            tags_list.update_tags_list()
+            self.main_tags_list.update_tags_list()
 
 
 class ItemTagsSettingsWindow(TagsSettingsWindow):
-    def __init__(self, main_window, preview_window):
-        super().__init__()
+    def __init__(self, main_window, preview_window, tags_list):
+        super().__init__(tags_list)
         self.setWindowTitle("Изменить теги")
         self.main_window = main_window
         self.preview_window = preview_window
@@ -210,8 +212,10 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
 
 
 class TagsList(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, main_window):
         super().__init__()
+
+        self.main_window = main_window
 
         # create the main tags layout
         self.tags_layout = QtWidgets.QVBoxLayout(self)
@@ -219,6 +223,10 @@ class TagsList(QtWidgets.QWidget):
         self.tags_widget = QtWidgets.QListWidget()
 
         self.tags_layout.addWidget(self.tags_widget)
+
+        self.changed_items = []
+
+        self.tags_widget.itemChanged.connect(self.on_item_changed)
 
     def update_tags_list(self):
         self.tags_widget.clear()
@@ -237,13 +245,30 @@ class TagsList(QtWidgets.QWidget):
             checkbox.setCheckState(QtCore.Qt.Unchecked)
             self.tags_widget.addItem(checkbox)
 
+    @QtCore.Slot()
+    def on_item_changed(self, item: QtWidgets.QListWidgetItem):
+
+        if item.checkState() == QtCore.Qt.Checked:
+            if item.text() not in self.changed_items:
+                self.changed_items.append(item.text())
+        else:
+            if item.text() in self.changed_items:
+                self.changed_items.remove(item.text())
+        if len(self.changed_items) >= 1:
+            self.search_files = db.get_files_by_tags(self.changed_items)
+        else:
+            self.search_files = ["Null"]
+        
+        self.main_window.display_files_list(self.search_files)
+    
+
 
 class PreviewWindow(QtWidgets.QWidget):
-    def __init__(self, main_window):
+    def __init__(self, main_window, tags_list):
 
         super().__init__()
 
-        self.tags_settings_window = ItemTagsSettingsWindow(main_window, self)
+        self.tags_settings_window = ItemTagsSettingsWindow(main_window, self, tags_list)
         self.main_window = main_window
 
         self.setFixedWidth(300)
@@ -314,10 +339,11 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        self.preview_window = PreviewWindow(main_window=self)
+        self.tags_list = TagsList(self)
+        self.preview_window = PreviewWindow(self, self.tags_list)
 
         # create the tags settings window
-        self.tags_settings_window = TagsSettingsWindow()
+        self.tags_settings_window = TagsSettingsWindow(self.tags_list)
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -346,12 +372,12 @@ class MainWindow(QtWidgets.QWidget):
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
         self.list_layout.addWidget(self.tags_button, 0, QtCore.Qt.AlignHCenter)
-        self.list_layout.addWidget(tags_list)
+        self.list_layout.addWidget(self.tags_list)
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.list)
 
         self.tags_button.hide()
-        tags_list.hide()
+        self.tags_list.hide()
 
         # create the Hbox for files list and file preview widgets and put it into the main Vbox
         self.files_layout = QtWidgets.QHBoxLayout()
@@ -373,9 +399,9 @@ class MainWindow(QtWidgets.QWidget):
         if self.is_folder_chosen:
             self.button.hide()
             self.tags_button.show()
-            tags_list.show()
-            tags_list.update_tags_list()
-            self.display_files_list()
+            self.tags_list.show()
+            self.tags_list.update_tags_list()
+            self.display_files_list(["Null"])
 
     def get_current_item(self):
         current_item = self.list.currentItem()
@@ -440,15 +466,25 @@ class MainWindow(QtWidgets.QWidget):
                 if not debug:
                     self.button.hide()
                     self.tags_button.show()
-                    tags_list.show()
+                    self.tags_list.show()
 
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
         db.save_changes()
 
-    def display_files_list(self):
-        files_list = db.get_all_filenames()
-        # print(files_list)
+    def display_files_list(self, search_list):
+        self.list.clear()
+
+        if search_list == ["Null"]:
+            files_list = db.get_all_filenames()
+        elif search_list:
+            files_list = search_list
+        else:
+            files_list = []
+
+        print(files_list)
+
+
         for file in files_list:
 
             icon_path = db.get_previewpath(file[0])
@@ -472,7 +508,6 @@ if __name__ == "__main__":
 
     fhandler = FileHandler(db)
     error_window = ErrorWindow()
-    tags_list = TagsList()
 
     # create the main program window
     main_window = MainWindow()

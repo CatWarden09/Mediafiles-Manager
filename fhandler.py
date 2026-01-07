@@ -230,3 +230,18 @@ class DatabaseHandler:
         self.cursor.execute("SELECT filepath FROM Files where filename = ?", (file,))
         filepath = self.cursor.fetchone()
         return filepath
+
+    def get_files_by_tags(self, tags_list):
+
+        placeholders = ', '.join(['?'] * len(tags_list))
+        query = f"""
+            SELECT f.filename
+            FROM Files f
+            JOIN Files_tags ft on ft.file_id = f.id
+            JOIN Tags t ON ft.tag_id = t.id
+            WHERE t.tagname IN ({placeholders})
+            GROUP BY f.id
+            HAVING COUNT(DISTINCT t.tagname) = ?
+            """
+        self.cursor.execute(query, tags_list + [len(tags_list)])
+        return self.cursor.fetchall()
