@@ -110,10 +110,11 @@ class TagsSettingsWindow(QtWidgets.QWidget):
 
 
 class ItemTagsSettingsWindow(TagsSettingsWindow):
-    def __init__(self, main_window):
+    def __init__(self, main_window, preview_window):
         super().__init__()
         self.setWindowTitle("Изменить теги")
         self.main_window = main_window
+        self.preview_window = preview_window
 
         self.common_tags_list_label = QtWidgets.QLabel("Доступные теги:")
         self.current_tags_list_label = QtWidgets.QLabel("Теги выбранного файла:")
@@ -182,6 +183,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
     def on_add_button_clicked(self):
         # get current selected item from the main window and current selected tags from available tags list
         # and save the selected tags for the selected file in the DB
+        # also update tags list in the file preview window
         current_item = self.main_window.get_current_item().text()
         selected_tags_list = self.common_tags_list.selectedItems()
 
@@ -189,6 +191,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
             selected_tags = [tag.text() for tag in selected_tags_list]
             db.save_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
+            self.preview_window.update_item_tags_list(current_item)
         else:
             error_window.show_error_message("Не выбран ни один тег для добавления!")
 
@@ -201,8 +204,10 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
             selected_tags = [tag.text() for tag in selected_tags_list]
             db.delete_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
+            self.preview_window.update_item_tags_list(current_item)
         else:
             error_window.show_error_message("Не выбран ни один тег для удаления!")
+
 
 class TagsList(QtWidgets.QWidget):
     def __init__(self):
@@ -238,7 +243,7 @@ class PreviewWindow(QtWidgets.QWidget):
 
         super().__init__()
 
-        self.tags_settings_window = ItemTagsSettingsWindow(main_window)
+        self.tags_settings_window = ItemTagsSettingsWindow(main_window, self)
         self.main_window = main_window
 
         self.setFixedWidth(300)
@@ -292,9 +297,9 @@ class PreviewWindow(QtWidgets.QWidget):
 
         self.image_preview.setPixmap(pixmap)
 
-    def update_item_tags_list(self, filename):
-        return
-        tags_list = ("test", "test_1", "test_2")
+    def update_item_tags_list(self, file):
+
+        tags_list = [tag[0] for tag in db.get_current_item_tags(file)]
         list_unpacked = ", ".join(tags_list)
         self.table_filetags.setText(list_unpacked)
 
