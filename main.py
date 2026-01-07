@@ -194,10 +194,15 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
 
     @QtCore.Slot()
     def on_delete_button_clicked(self):
-        pass
+        current_item = self.main_window.get_current_item().text()
+        selected_tags_list = self.current_tags_list.selectedItems()
 
-        # db.save_changes()
-
+        if selected_tags_list != []:
+            selected_tags = [tag.text() for tag in selected_tags_list]
+            db.delete_current_item_tags(current_item, selected_tags)
+            self.set_tags_list()
+        else:
+            error_window.show_error_message("Не выбран ни один тег для удаления!")
 
 class TagsList(QtWidgets.QWidget):
     def __init__(self):

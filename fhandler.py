@@ -196,6 +196,20 @@ class DatabaseHandler:
             )
         self.save_changes()
 
+    # Delete all tag-file pairs where ids of tags and files are equal to the method arguments
+    def delete_current_item_tags(self, item, tags_list):
+        for tag in tags_list:
+            self.cursor.execute(
+                """
+                DELETE FROM Files_tags
+                WHERE file_id = (SELECT id FROM Files WHERE filename = ?)
+                AND tag_id = (SELECT id FROM Tags WHERE tagname = ?)
+
+                """,
+                (item, tag),
+            )
+        self.save_changes()
+
     # check if the tag is already in the table and return True if the DB query returns !=Null, return False otherwise
     def tag_exists(self, tag_name: str) -> bool:
         self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))
