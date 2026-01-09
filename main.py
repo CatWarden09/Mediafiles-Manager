@@ -283,12 +283,22 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # create table for the file info
         self.table = QtWidgets.QFormLayout()
-        self.table_filename = QtWidgets.QLabel()
-        self.table_filepath = QtWidgets.QLabel()
-        self.table_filetags = QtWidgets.QLabel()
+        self.table_filename = QtWidgets.QTextEdit()
+        self.table_filepath = QtWidgets.QTextEdit()
+        self.table_filetags = QtWidgets.QTextEdit()
         self.table_description = QtWidgets.QTextEdit()
+
+        self.table_filename.setReadOnly(True)
+        self.table_filename.setMaximumHeight(100)
+
+        self.table_filepath.setReadOnly(True)
+        self.table_filepath.setMaximumHeight(100)
+
+        self.table_filetags.setReadOnly(True)
+        self.table_filetags.setMaximumHeight(100)
+
         self.table_description.setReadOnly(True)
-        
+        self.table_description.setMaximumHeight(100)
 
         self.table.addRow("Имя файла:", self.table_filename)
         self.table.addRow("Путь к файлу:", self.table_filepath)
@@ -321,12 +331,9 @@ class PreviewWindow(QtWidgets.QWidget):
         self.update_item_tags_list(filename)
         self.table_description.setText(db.get_file_description(filename)[0])
 
-        filename = filename[0:35] + "..." if len(filename) > 35 else filename
-        filepath = filepath[0:35] + "..." if len(filepath) > 35 else filepath
 
         self.table_filename.setText(filename)
         self.table_filepath.setText(filepath)
-        
 
         self.image_preview.setPixmap(pixmap)
 
