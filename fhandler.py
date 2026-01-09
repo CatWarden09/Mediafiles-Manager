@@ -255,3 +255,7 @@ class DatabaseHandler:
             "UPDATE Files SET description = ? WHERE filename = ?", (description, file)
         )
         self.save_changes()
+
+    def get_file_description(self, file):
+        self.cursor.execute("SELECT description FROM Files WHERE filename = ?", (file,))
+        return self.cursor.fetchone()

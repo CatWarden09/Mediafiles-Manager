@@ -286,10 +286,14 @@ class PreviewWindow(QtWidgets.QWidget):
         self.table_filename = QtWidgets.QLabel()
         self.table_filepath = QtWidgets.QLabel()
         self.table_filetags = QtWidgets.QLabel()
+        self.table_description = QtWidgets.QTextEdit()
+        self.table_description.setReadOnly(True)
+        
 
         self.table.addRow("Имя файла:", self.table_filename)
         self.table.addRow("Путь к файлу:", self.table_filepath)
         self.table.addRow("Список тегов:", self.table_filetags)
+        self.table.addRow("Описание файла:", self.table_description)
 
         # add the main layout for the window
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -315,12 +319,14 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # update the tags list for the current selected item
         self.update_item_tags_list(filename)
+        self.table_description.setText(db.get_file_description(filename)[0])
 
         filename = filename[0:35] + "..." if len(filename) > 35 else filename
         filepath = filepath[0:35] + "..." if len(filepath) > 35 else filepath
 
         self.table_filename.setText(filename)
         self.table_filepath.setText(filepath)
+        
 
         self.image_preview.setPixmap(pixmap)
 
