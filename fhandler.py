@@ -22,7 +22,10 @@ allowed_video_formats = [
 allowed_types = allowed_image_formats + allowed_video_formats
 
 
-# TODO add a check if the thumbnails folder already exists and skip these methods (for the future features in case user changes folder back to the previous one !- need to check if there are any changes in files)
+# TODO add a check if the thumbnails folder already exists and skip these methods
+# (for the future features in case user changes folder back to the previous one !- need to check if there are any changes in files)
+# TODO add automatic audio thumbnail creation
+# TODO add automatic tags creation for typical files (like images, videos etc.)
 class FileHandler:
 
     def __init__(self, db):
@@ -97,9 +100,10 @@ class DatabaseHandler:
             """
         CREATE TABLE IF NOT EXISTS Files (
         id INTEGER PRIMARY KEY,
-        filename TEXT NOT NULL,
+        filename TEXT NOT NULL UNIQUE,
         filepath TEXT NOT NULL UNIQUE,
-        previewpath TEXT NOT NULL
+        previewpath TEXT NOT NULL UNIQUE,
+        description TEXT
         )              
         """
         )
@@ -233,7 +237,7 @@ class DatabaseHandler:
 
     def get_files_by_tags(self, tags_list):
 
-        placeholders = ', '.join(['?'] * len(tags_list))
+        placeholders = ", ".join(["?"] * len(tags_list))
         query = f"""
             SELECT f.filename
             FROM Files f
@@ -245,3 +249,9 @@ class DatabaseHandler:
             """
         self.cursor.execute(query, tags_list + [len(tags_list)])
         return self.cursor.fetchall()
+
+    def update_file_description(self, file, description: str):
+        self.cursor.execute(
+            "UPDATE Files SET description = ? WHERE filename = ?", (description, file)
+        )
+        self.save_changes()

@@ -258,9 +258,8 @@ class TagsList(QtWidgets.QWidget):
             self.search_files = db.get_files_by_tags(self.changed_items)
         else:
             self.search_files = ["Null"]
-        
+
         self.main_window.display_files_list(self.search_files)
-    
 
 
 class PreviewWindow(QtWidgets.QWidget):
@@ -305,6 +304,9 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # connect to the buttons clicked signals
         self.tags_settings_button.clicked.connect(self.on_tags_settings_button_clicked)
+        self.item_description_button.clicked.connect(
+            self.on_item_description_button_clicked
+        )
 
     def apply_preview_data(self, icon, filename, filepath):
         # TODO add files description and search by it
@@ -333,6 +335,22 @@ class PreviewWindow(QtWidgets.QWidget):
         if self.main_window.get_current_item() is not None:
             self.tags_settings_window.show()
             self.tags_settings_window.set_tags_list()
+
+    @QtCore.Slot()
+    def on_item_description_button_clicked(self):
+        current_item = self.main_window.get_current_item()
+        if current_item:
+            description, ok = QtWidgets.QInputDialog.getText(
+                self, "Изменить описание", "Введите описание файла"
+            )
+            if ok:
+                if description.strip():
+                    db.update_file_description(current_item.text(), description)
+
+                else:
+                    error_window.show_error_message("Укажите описание файла!")
+        else:
+            return
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -481,9 +499,6 @@ class MainWindow(QtWidgets.QWidget):
             files_list = search_list
         else:
             files_list = []
-
-        print(files_list)
-
 
         for file in files_list:
 
