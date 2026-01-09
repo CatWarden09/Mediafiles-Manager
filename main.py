@@ -211,6 +211,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
             error_window.show_error_message("Не выбран ни один тег для удаления!")
 
 
+# TODO add "select all" and "deselect all" buttons
 class TagsList(QtWidgets.QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -331,7 +332,6 @@ class PreviewWindow(QtWidgets.QWidget):
         self.update_item_tags_list(filename)
         self.table_description.setText(db.get_file_description(filename)[0])
 
-
         self.table_filename.setText(filename)
         self.table_filepath.setText(filepath)
 
@@ -342,6 +342,9 @@ class PreviewWindow(QtWidgets.QWidget):
         tags_list = [tag[0] for tag in db.get_current_item_tags(file)]
         list_unpacked = ", ".join(tags_list)
         self.table_filetags.setText(list_unpacked)
+
+    def update_item_description(self, description):
+        self.table_description.setText(description)
 
     @QtCore.Slot()
     def on_tags_settings_button_clicked(self):
@@ -354,12 +357,12 @@ class PreviewWindow(QtWidgets.QWidget):
         current_item = self.main_window.get_current_item()
         if current_item:
             description, ok = QtWidgets.QInputDialog.getText(
-                self, "Изменить описание", "Введите описание файла"
+                self, "Изменить описание", "Введите новое описание файла"
             )
             if ok:
                 if description.strip():
                     db.update_file_description(current_item.text(), description)
-
+                    self.update_item_description(description)
                 else:
                     error_window.show_error_message("Укажите описание файла!")
         else:
