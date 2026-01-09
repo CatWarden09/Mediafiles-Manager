@@ -18,6 +18,36 @@ load_dotenv()
 debug = False
 
 
+class SearchBar(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+        # create the search bar
+        self.searchbar = QtWidgets.QLineEdit(self)
+        self.searchbar.setPlaceholderText("Поиск по описанию файла...")
+
+        self.searchbar.returnPressed.connect(self.on_search_query_input)
+
+        # create a layout to show the search bar in the main window correctly
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.searchbar)
+
+        icon_path = Path(__file__).parent / "icons" / "close.png"
+        icon = QtGui.QIcon(str(icon_path))
+        action = self.searchbar.addAction(icon, QtWidgets.QLineEdit.TrailingPosition)
+
+        action.triggered.connect(self.on_cancel_button_clicked)
+
+    @QtCore.Slot()
+    def on_search_query_input(self):
+        query = self.searchbar.text()
+        print(query)
+
+    @QtCore.Slot()
+    def on_cancel_button_clicked(self):
+        self.searchbar.clear()
+
+
 class ErrorWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -375,6 +405,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.tags_list = TagsList(self)
         self.preview_window = PreviewWindow(self, self.tags_list)
+        self.searchbar = SearchBar()
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow(self.tags_list)
@@ -406,6 +437,7 @@ class MainWindow(QtWidgets.QWidget):
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
         self.list_layout.addWidget(self.tags_button, 0, QtCore.Qt.AlignHCenter)
+        self.list_layout.addWidget(self.searchbar)
         self.list_layout.addWidget(self.tags_list)
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.list)
@@ -531,7 +563,7 @@ class MainWindow(QtWidgets.QWidget):
 
 if __name__ == "__main__":
 
-    icon_path = Path(__file__).parent / "icon.ico"
+    icon_path = Path(__file__).parent / "icons" / "app_icon.ico"
     app = QtWidgets.QApplication([])
 
     db = DatabaseHandler()
