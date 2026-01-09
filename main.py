@@ -19,8 +19,11 @@ debug = False
 
 
 class SearchBar(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, main_window, tags_list_ui):
         super().__init__()
+
+        self.tags_list_ui = tags_list_ui
+        self.main_window = main_window
 
         # create the search bar
         self.searchbar = QtWidgets.QLineEdit(self)
@@ -41,7 +44,21 @@ class SearchBar(QtWidgets.QWidget):
     @QtCore.Slot()
     def on_search_query_input(self):
         query = self.searchbar.text()
-        print(query)
+        tags = self.tags_list_ui.get_selected_tags()
+
+        if tags and query.strip():
+
+            files_by_tags = db.get_files_by_tags(tags)
+            files_by_description = db.get_files_by_description(query)
+            all_files = [file for file in files_by_tags if file in files_by_description]
+        elif tags:
+            all_files = db.get_files_by_tags(tags)
+        elif query.strip():
+            all_files = db.get_files_by_description(query)
+        else:
+            all_files = db.get_all_filenames()
+
+        self.main_window.display_files_list(all_files)
 
     @QtCore.Slot()
     def on_cancel_button_clicked(self):
@@ -104,7 +121,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
         tags_list = db.get_all_tagnames()
 
         for tag in tags_list:
-            item = QtWidgets.QListWidgetItem(tag[0])
+            item = QtWidgets.QListWidgetItem(tag)
 
             self.tags_list.addItem(item)
 
@@ -207,7 +224,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
     # update both lists using the same method to avoid code duplication
     def update_lists(self, target_list, tags_list):
         for tag in tags_list:
-            item = QtWidgets.QListWidgetItem(tag[0])
+            item = QtWidgets.QListWidgetItem(tag)
 
             target_list.addItem(item)
 
@@ -257,7 +274,7 @@ class TagsList(QtWidgets.QWidget):
 
         self.changed_items = []
 
-        self.tags_widget.itemChanged.connect(self.on_item_changed)
+        # self.tags_widget.itemChanged.connect(self.on_item_changed)
 
     def update_tags_list(self):
         self.tags_widget.clear()
@@ -266,7 +283,7 @@ class TagsList(QtWidgets.QWidget):
 
         for tag in tags_list:
 
-            checkbox = QtWidgets.QListWidgetItem(tag[0])
+            checkbox = QtWidgets.QListWidgetItem(tag)
 
             # | is a bitwise OR to add the item flag without changing all the existing flags
             # it compares every bit in flags() and assigns 1 to the byte at ItemIsUserCheckable position
@@ -276,21 +293,31 @@ class TagsList(QtWidgets.QWidget):
             checkbox.setCheckState(QtCore.Qt.Unchecked)
             self.tags_widget.addItem(checkbox)
 
-    @QtCore.Slot()
-    def on_item_changed(self, item: QtWidgets.QListWidgetItem):
+    def get_selected_tags(self):
+        selected_tags = []
 
-        if item.checkState() == QtCore.Qt.Checked:
-            if item.text() not in self.changed_items:
-                self.changed_items.append(item.text())
-        else:
-            if item.text() in self.changed_items:
-                self.changed_items.remove(item.text())
-        if len(self.changed_items) >= 1:
-            self.search_files = db.get_files_by_tags(self.changed_items)
-        else:
-            self.search_files = ["Null"]
+        for i in range(self.tags_widget.count()):
+            item = self.tags_widget.item(i)
+            if item.checkState() == QtCore.Qt.Checked:
+                selected_tags.append(item.text())
 
-        self.main_window.display_files_list(self.search_files)
+        return selected_tags
+
+    # @QtCore.Slot()
+    # def on_item_changed(self, item: QtWidgets.QListWidgetItem):
+
+    #     if item.checkState() == QtCore.Qt.Checked:
+    #         if item.text() not in self.changed_items:
+    #             self.changed_items.append(item.text())
+    #     else:
+    #         if item.text() in self.changed_items:
+    #             self.changed_items.remove(item.text())
+    #     if len(self.changed_items) >= 1:
+    #         self.search_files = db.get_files_by_tags(self.changed_items)
+    #     else:
+    #         self.search_files = ["Null"]
+
+    #     self.main_window.display_files_list(self.search_files)
 
 
 class PreviewWindow(QtWidgets.QWidget):
@@ -360,7 +387,7 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # update the tags list for the current selected item
         self.update_item_tags_list(filename)
-        self.table_description.setText(db.get_file_description(filename)[0])
+        self.table_description.setText(db.get_file_description(filename))
 
         self.table_filename.setText(filename)
         self.table_filepath.setText(filepath)
@@ -369,7 +396,7 @@ class PreviewWindow(QtWidgets.QWidget):
 
     def update_item_tags_list(self, file):
 
-        tags_list = [tag[0] for tag in db.get_current_item_tags(file)]
+        tags_list = [tag for tag in db.get_current_item_tags(file)]
         list_unpacked = ", ".join(tags_list)
         self.table_filetags.setText(list_unpacked)
 
@@ -405,7 +432,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.tags_list = TagsList(self)
         self.preview_window = PreviewWindow(self, self.tags_list)
-        self.searchbar = SearchBar()
+        self.searchbar = SearchBar(self, self.tags_list)
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow(self.tags_list)
@@ -488,7 +515,7 @@ class MainWindow(QtWidgets.QWidget):
         preview_icon = self.list.currentItem().icon()
         preview_filename = self.list.currentItem().text()
         preview_filepath = db.get_filepath(preview_filename)
-        preview_filepath = preview_filepath[0]
+        preview_filepath = preview_filepath
 
         self.preview_window.apply_preview_data(
             preview_icon, preview_filename, preview_filepath
@@ -521,8 +548,7 @@ class MainWindow(QtWidgets.QWidget):
 
                     icon_path = db.get_previewpath(file["filename"])
 
-                    # convert the path to the first element of a tuple because SQLite returns a tuple with 1 element, and QIcon need string
-                    icon_path = icon_path[0]
+                    icon_path = icon_path
 
                     item = QtWidgets.QListWidgetItem(file["filename"])
                     item.setIcon(QIcon(str(icon_path)))
@@ -541,6 +567,7 @@ class MainWindow(QtWidgets.QWidget):
     def display_files_list(self, search_list):
         self.list.clear()
 
+        # check if the list is built for the first time or by tag list checkboxes changing
         if search_list == ["Null"]:
             files_list = db.get_all_filenames()
         elif search_list:
@@ -550,12 +577,11 @@ class MainWindow(QtWidgets.QWidget):
 
         for file in files_list:
 
-            icon_path = db.get_previewpath(file[0])
+            icon_path = db.get_previewpath(file)
 
-            # convert the path to the first element of a tuple because SQLite returns a tuple with 1 element, and QIcon need string
-            icon_path = icon_path[0]
+            icon_path = icon_path
 
-            item = QtWidgets.QListWidgetItem(file[0])
+            item = QtWidgets.QListWidgetItem(file)
             item.setIcon(QIcon(str(icon_path)))
 
             self.list.addItem(item)

@@ -163,8 +163,8 @@ class DatabaseHandler:
 
     def get_all_tagnames(self):
         self.cursor.execute("SELECT tagname FROM Tags")
-        tags_list = self.cursor.fetchall()
-        return tags_list
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
 
     # Get all tag names assigned to a file:
     # 1. Start from Tags table
@@ -184,7 +184,8 @@ class DatabaseHandler:
         """,
             (item,),
         )
-        return self.cursor.fetchall()
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
 
     def save_current_item_tags(self, item, tags_list):
         for tag in tags_list:
@@ -221,22 +222,24 @@ class DatabaseHandler:
 
     def get_previewpath(self, file):
         self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))
-        previewpath = self.cursor.fetchone()
+        row = self.cursor.fetchone()
         # print(previewpath)
-        return previewpath
+
+        return row[0]
 
     def get_all_filenames(self):
         self.cursor.execute("SELECT filename FROM Files")
-        files_list = self.cursor.fetchall()
-        return files_list
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
 
     def get_filepath(self, file):
         self.cursor.execute("SELECT filepath FROM Files where filename = ?", (file,))
-        filepath = self.cursor.fetchone()
-        return filepath
+        row = self.cursor.fetchone()
+        return row[0]
 
     def get_files_by_tags(self, tags_list):
-
+        if not tags_list:
+            return []
         placeholders = ", ".join(["?"] * len(tags_list))
         query = f"""
             SELECT f.filename
@@ -246,9 +249,17 @@ class DatabaseHandler:
             WHERE t.tagname IN ({placeholders})
             GROUP BY f.id
             HAVING COUNT(DISTINCT t.tagname) = ?
-            """
-        self.cursor.execute(query, tags_list + [len(tags_list)])
-        return self.cursor.fetchall()
+        """
+        params = tags_list + [len(tags_list)]
+        self.cursor.execute(query, params)
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
+
+    def get_files_by_description(self, description):
+        query = "SELECT filename FROM Files WHERE description LIKE ?"
+        self.cursor.execute(query, (f"%{description}%",))
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
 
     def update_file_description(self, file, description: str):
         self.cursor.execute(
@@ -258,4 +269,5 @@ class DatabaseHandler:
 
     def get_file_description(self, file):
         self.cursor.execute("SELECT description FROM Files WHERE filename = ?", (file,))
-        return self.cursor.fetchone()
+        row = self.cursor.fetchone()
+        return row[0]
