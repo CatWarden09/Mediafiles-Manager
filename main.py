@@ -63,6 +63,9 @@ class SearchBar(QtWidgets.QWidget):
     @QtCore.Slot()
     def on_cancel_button_clicked(self):
         self.searchbar.clear()
+        self.tags_list_ui.deselect_all_tags()
+        all_files = db.get_all_filenames()
+        self.main_window.display_files_list(all_files)
 
 
 class ErrorWindow(QtWidgets.QWidget):
@@ -303,6 +306,12 @@ class TagsList(QtWidgets.QWidget):
 
         return selected_tags
 
+    def deselect_all_tags(self):
+        for i in range(self.tags_widget.count()):
+            item = self.tags_widget.item(i)
+            if item.checkState() == QtCore.Qt.Checked:
+                item.setCheckState(QtCore.Qt.Unchecked)
+
     # @QtCore.Slot()
     # def on_item_changed(self, item: QtWidgets.QListWidgetItem):
 
@@ -381,7 +390,6 @@ class PreviewWindow(QtWidgets.QWidget):
         )
 
     def apply_preview_data(self, icon, filename, filepath):
-        # TODO add files description and search by it
 
         pixmap = icon.pixmap(256, 256)
 
