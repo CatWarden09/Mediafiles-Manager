@@ -5,8 +5,8 @@ import ffmpeg
 import sqlite3
 import config
 
-allowed_image_formats = [".jpeg", ".jpg", ".png", ".gif", ".bmp", ".tiff", ".jfif"]
-allowed_video_formats = [
+ALLOWED_IMAGE_FORMATS = [".jpeg", ".jpg", ".png", ".gif", ".bmp", ".tiff", ".jfif"]
+ALLOWED_VIDEO_FORMATS = [
     ".mp4",
     ".mkv",
     ".avi",
@@ -18,8 +18,20 @@ allowed_video_formats = [
     ".mpg",
     ".m4v",
 ]
+ALLOWED_AUDIO_FORMATS = [
+    ".mp3",
+    ".wav",
+    ".flac",
+    ".aac",
+    ".ogg",
+    ".opus",
+    ".m4a",
+    ".wma",
+    ".aiff",
+    ".alac",
+]
 
-allowed_types = allowed_image_formats + allowed_video_formats
+ALLOWED_TYPES = ALLOWED_IMAGE_FORMATS + ALLOWED_VIDEO_FORMATS + ALLOWED_AUDIO_FORMATS
 
 
 # TODO add a check if the thumbnails folder already exists and skip these methods
@@ -31,26 +43,37 @@ class FileHandler:
     def __init__(self, db):
         self.db = db
 
+    def create_audio_thumbnail(self, folder):
+        thumb_file = os.path.join(config.assign_script_dir(), "icons", "audio.png")
+        print(folder)
+        for item in folder:
+            filename = item["filename"]
+            file_path = item["file_path"]
+            if os.path.splitext(filename)[1].lower() in ALLOWED_AUDIO_FORMATS:
+                self.db.save_to_database(filename, file_path, thumb_file)
+                self.db.save_current_item_tags(filename, ["Audio"])
+
     def clear_files_list(self, folder):
         filtered = []
 
         for f in os.listdir(folder):
-            if os.path.splitext(f)[1].lower() in allowed_types:
+            if os.path.splitext(f)[1].lower() in ALLOWED_TYPES:
                 filtered.append({"filename": f, "file_path": os.path.join(folder, f)})
+                # TODO deprecate the dictionary
                 # most probably the file_path here and the dictionary is no longer needed since everything is in the DB
+        self.create_audio_thumbnail(filtered)
         return filtered
 
     # TODO merge with video thubmnail method and refactor so it works with filtered file list from the method above (can pass it from main)
     # because now we have 3 separate methods that do similar job with the same list at the same time
 
-    # TODO move the thumbnails folder to the program dir
     def create_image_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
         os.makedirs(save_path, exist_ok=True)
 
         size = 128, 128
         for file in os.listdir(folder):
-            if os.path.splitext(file)[1].lower() in allowed_image_formats:
+            if os.path.splitext(file)[1].lower() in ALLOWED_IMAGE_FORMATS:
                 with Image.open(os.path.join(folder, file)) as img:
                     img.thumbnail(size)
                     thumb_file = os.path.join(
@@ -59,14 +82,15 @@ class FileHandler:
                     img.save(thumb_file)
                 file_path = os.path.join(folder, file)
                 self.db.save_to_database(file, file_path, thumb_file)
+                self.db.save_current_item_tags(file, ["Image"])
 
     def create_video_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
         # TODO add ffmpeg search in system\program dir
-        FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
+        
         for file in os.listdir(folder):
 
-            if os.path.splitext(file)[1].lower() in allowed_video_formats:
+            if os.path.splitext(file)[1].lower() in ALLOWED_VIDEO_FORMATS:
                 (
                     ffmpeg.input(
                         os.path.join(folder, file),
@@ -78,13 +102,14 @@ class FileHandler:
                         vframes=1,
                         n=None,
                     )
-                    .run(cmd=FFMPEG_PATH)
+                    .run(cmd=config.get_ffmpeg_path())
                 )
                 file_path = os.path.join(folder, file)
                 preview_path = os.path.join(
                     save_path, os.path.splitext(file)[0] + ".png"
                 )
                 self.db.save_to_database(file, file_path, preview_path)
+                self.db.save_current_item_tags(file, ["Video"])
 
 
 class DatabaseHandler:
@@ -102,7 +127,7 @@ class DatabaseHandler:
         id INTEGER PRIMARY KEY,
         filename TEXT NOT NULL UNIQUE,
         filepath TEXT NOT NULL UNIQUE,
-        previewpath TEXT NOT NULL UNIQUE,
+        previewpath TEXT NOT NULL,
         description TEXT
         )              
         """
@@ -126,6 +151,14 @@ class DatabaseHandler:
         FOREIGN KEY (tag_id) REFERENCES Tags(id) ON DELETE CASCADE
         )
         """
+        )
+
+        self.cursor.execute(
+            """INSERT OR IGNORE INTO Tags(tagname) VALUES
+            ("Audio"),
+            ("Video"),
+            ("Image")
+            """
         )
 
         self.save_changes()

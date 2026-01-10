@@ -17,6 +17,8 @@ load_dotenv()
 
 debug = False
 
+PROTECTED_TAGS = ["Audio", "Video", "Image"]
+
 
 class SearchBar(QtWidgets.QWidget):
     def __init__(self, main_window, tags_list_ui):
@@ -35,7 +37,7 @@ class SearchBar(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.addWidget(self.searchbar)
 
-        icon_path = Path(__file__).parent / "icons" / "close.png"
+        icon_path = os.path.join(config.assign_script_dir(), "icons", "close.png")
         icon = QtGui.QIcon(str(icon_path))
         action = self.searchbar.addAction(icon, QtWidgets.QLineEdit.TrailingPosition)
 
@@ -137,6 +139,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
 
         if ok:
             if tag_name.strip():
+                # TODO add protection from creating same tags but with different register (Audio - audio) etc.
                 if not db.tag_exists(tag_name):
                     db.save_tag_to_database(tag_name)
                     self.add_tags_to_list(tag_name)
@@ -154,6 +157,8 @@ class TagsSettingsWindow(QtWidgets.QWidget):
 
         if item is None:
             error_window.show_error_message("Выберите тег для удаления!")
+        elif item.text() in PROTECTED_TAGS:
+            error_window.show_error_message("Невозможно удалить стандартные теги!")
         else:
             tag = item.text()
             db.delete_tag_from_database(tag)
@@ -239,11 +244,23 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         current_item = self.main_window.get_current_item().text()
         selected_tags_list = self.common_tags_list.selectedItems()
 
-        if selected_tags_list != []:
-            selected_tags = [tag.text() for tag in selected_tags_list]
+        # protection from adding more than 1 standard tag (Audio, Video, Image)
+
+        assigned_tags = [
+            self.current_tags_list.item(i).text()
+            for i in range(self.current_tags_list.count())
+        ]
+        protected_tag_found = any(tag in PROTECTED_TAGS for tag in assigned_tags)
+        selected_tags = [tag.text() for tag in selected_tags_list]
+
+        if selected_tags and not protected_tag_found:
             db.save_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
             self.preview_window.update_item_tags_list(current_item)
+        elif protected_tag_found:
+            error_window.show_error_message(
+                "Невозможно добавить более одного стандартного тега!"
+            )
         else:
             error_window.show_error_message("Не выбран ни один тег для добавления!")
 
@@ -252,11 +269,16 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         current_item = self.main_window.get_current_item().text()
         selected_tags_list = self.current_tags_list.selectedItems()
 
-        if selected_tags_list != []:
-            selected_tags = [tag.text() for tag in selected_tags_list]
+        # protection from deleting a standard tag (Audio, Video, Image)
+        selected_tags = [tag.text() for tag in selected_tags_list]
+        protected_tag_found = any(tag in PROTECTED_TAGS for tag in selected_tags)
+
+        if selected_tags and not protected_tag_found:
             db.delete_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
             self.preview_window.update_item_tags_list(current_item)
+        elif protected_tag_found:
+            error_window.show_error_message("Невозможно удалить стандартные теги!")
         else:
             error_window.show_error_message("Не выбран ни один тег для удаления!")
 
@@ -467,7 +489,7 @@ class MainWindow(QtWidgets.QWidget):
         self.list.setDragEnabled(True)
         self.list.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
 
-        # add the files_list layout and all items, hide tags button and window
+        # add the files_list layout and all items
         self.list_layout = QtWidgets.QVBoxLayout()
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.button, 0, QtCore.Qt.AlignHCenter)
@@ -476,9 +498,10 @@ class MainWindow(QtWidgets.QWidget):
         self.list_layout.addWidget(self.tags_list)
         self.list_layout.addSpacing(10)
         self.list_layout.addWidget(self.list)
-
+        # hide tags button, window and searchbar
         self.tags_button.hide()
         self.tags_list.hide()
+        self.searchbar.hide()
 
         # create the Hbox for files list and file preview widgets and put it into the main Vbox
         self.files_layout = QtWidgets.QHBoxLayout()
@@ -501,6 +524,7 @@ class MainWindow(QtWidgets.QWidget):
             self.button.hide()
             self.tags_button.show()
             self.tags_list.show()
+            self.searchbar.show()
             self.tags_list.update_tags_list()
             self.display_files_list(["Null"])
 
@@ -567,6 +591,8 @@ class MainWindow(QtWidgets.QWidget):
                     self.button.hide()
                     self.tags_button.show()
                     self.tags_list.show()
+                    self.searchbar.show()
+                    self.tags_list.update_tags_list()
 
                 config.save_to_env("IS_FOLDER_CHOSEN", "True")
                 config.save_to_env("FOLDER_PATH", folder)
@@ -597,7 +623,7 @@ class MainWindow(QtWidgets.QWidget):
 
 if __name__ == "__main__":
 
-    icon_path = Path(__file__).parent / "icons" / "app_icon.ico"
+    icon_path = os.path.join(config.assign_script_dir(), "icons", "app_icon.ico")
     app = QtWidgets.QApplication([])
 
     db = DatabaseHandler()

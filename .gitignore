@@ -185,3 +185,4 @@ cython_debug/
 .cursorindexingignore
 *.db
 /icons
+ffmpeg.exe
