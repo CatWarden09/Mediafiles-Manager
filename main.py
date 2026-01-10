@@ -21,15 +21,16 @@ debug = False
 
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
 
+
 class FileDragList(QtWidgets.QListWidget):
     def startDrag(self, supportedActions):
         item = self.currentItem()
         if not item:
             return
 
-        file_path = db.get_filepath(item.text()) 
+        file_path = db.get_filepath(item.text())
         if not file_path or not Path(file_path).exists():
-            return 
+            return
 
         drag = QDrag(self)
         mime_data = QMimeData()
@@ -48,7 +49,7 @@ class SearchBar(QtWidgets.QWidget):
 
         # create the search bar
         self.searchbar = QtWidgets.QLineEdit(self)
-        self.searchbar.setPlaceholderText("Поиск по описанию файла...")
+        self.searchbar.setPlaceholderText("Поиск по названию или описанию файла...")
 
         self.searchbar.returnPressed.connect(self.on_search_query_input)
 
@@ -70,12 +71,12 @@ class SearchBar(QtWidgets.QWidget):
         if tags and query.strip():
 
             files_by_tags = db.get_files_by_tags(tags)
-            files_by_description = db.get_files_by_description(query)
+            files_by_description = db.get_files_by_text(query)
             all_files = [file for file in files_by_tags if file in files_by_description]
         elif tags:
             all_files = db.get_files_by_tags(tags)
         elif query.strip():
-            all_files = db.get_files_by_description(query)
+            all_files = db.get_files_by_text(query)
         else:
             all_files = db.get_all_filenames()
 
@@ -264,24 +265,27 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         selected_tags_list = self.common_tags_list.selectedItems()
 
         # protection from adding more than 1 standard tag (Audio, Video, Image)
-
         assigned_tags = [
             self.current_tags_list.item(i).text()
             for i in range(self.current_tags_list.count())
         ]
-        protected_tag_found = any(tag in PROTECTED_TAGS for tag in assigned_tags)
+
         selected_tags = [tag.text() for tag in selected_tags_list]
 
-        if selected_tags and not protected_tag_found:
-            db.save_current_item_tags(current_item, selected_tags)
-            self.set_tags_list()
-            self.preview_window.update_item_tags_list(current_item)
-        elif protected_tag_found:
+        all_tags_after_add = assigned_tags + selected_tags
+
+        standard_tags_count = sum(tag in PROTECTED_TAGS for tag in all_tags_after_add)
+
+        if not selected_tags:
+            error_window.show_error_message("Не выбран ни один тег для добавления!")
+        elif standard_tags_count > 1:
             error_window.show_error_message(
                 "Невозможно добавить более одного стандартного тега!"
             )
         else:
-            error_window.show_error_message("Не выбран ни один тег для добавления!")
+            db.save_current_item_tags(current_item, selected_tags)
+            self.set_tags_list()
+            self.preview_window.update_item_tags_list(current_item)
 
     @QtCore.Slot()
     def on_delete_button_clicked(self):
@@ -507,7 +511,6 @@ class MainWindow(QtWidgets.QWidget):
         self.list.setDragEnabled(True)
         self.list.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
 
-
         # add the files_list layout and all items
         self.list_layout = QtWidgets.QVBoxLayout()
         self.list_layout.addSpacing(10)
@@ -599,8 +602,6 @@ class MainWindow(QtWidgets.QWidget):
 
                     icon_path = db.get_previewpath(file["filename"])
 
-                    icon_path = icon_path
-
                     item = QtWidgets.QListWidgetItem(file["filename"])
                     item.setIcon(QIcon(str(icon_path)))
 
@@ -631,8 +632,6 @@ class MainWindow(QtWidgets.QWidget):
         for file in files_list:
 
             icon_path = db.get_previewpath(file)
-
-            icon_path = icon_path
 
             item = QtWidgets.QListWidgetItem(file)
             item.setIcon(QIcon(str(icon_path)))

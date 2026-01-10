@@ -288,9 +288,9 @@ class DatabaseHandler:
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
 
-    def get_files_by_description(self, description):
-        query = "SELECT filename FROM Files WHERE description LIKE ?"
-        self.cursor.execute(query, (f"%{description}%",))
+    def get_files_by_text(self, description):
+        query = "SELECT filename FROM Files WHERE description LIKE ? OR filename LIKE ?"
+        self.cursor.execute(query, (f"%{description}%", f"%{description}%"))
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
 
