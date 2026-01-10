@@ -9,6 +9,8 @@ from fhandler import FileHandler, DatabaseHandler
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QListView
 from PySide6.QtCore import QSize
+from PySide6.QtCore import Qt, QMimeData, QUrl
+from PySide6.QtGui import QDrag
 from PySide6.QtGui import QIcon
 
 from pathlib import Path
@@ -18,6 +20,23 @@ load_dotenv()
 debug = False
 
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
+
+class FileDragList(QtWidgets.QListWidget):
+    def startDrag(self, supportedActions):
+        item = self.currentItem()
+        if not item:
+            return
+
+        file_path = db.get_filepath(item.text()) 
+        if not file_path or not Path(file_path).exists():
+            return 
+
+        drag = QDrag(self)
+        mime_data = QMimeData()
+        mime_data.setUrls([QUrl.fromLocalFile(file_path)])
+        drag.setMimeData(mime_data)
+
+        drag.exec(Qt.CopyAction)
 
 
 class SearchBar(QtWidgets.QWidget):
@@ -480,14 +499,14 @@ class MainWindow(QtWidgets.QWidget):
         self.tags_button.setMaximumSize(200, 50)
 
         # create a widget for the files list
-        self.list = QtWidgets.QListWidget()
+        self.list = FileDragList()
         self.list.setViewMode(QListView.IconMode)
         self.list.setIconSize(QSize(128, 128))
         self.list.setResizeMode(QListView.ResizeMode.Adjust)
         self.list.setGridSize(QSize(150, 150))
-
         self.list.setDragEnabled(True)
         self.list.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
+
 
         # add the files_list layout and all items
         self.list_layout = QtWidgets.QVBoxLayout()
