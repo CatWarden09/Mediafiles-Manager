@@ -1,9 +1,9 @@
-import os
-import sys
+import os, sys
 import config
 
 from dotenv import load_dotenv
-from fhandler import FileHandler, DatabaseHandler, FileScanner
+from fhandler import FileHandler, FileScanner
+from database import DatabaseHandler
 
 
 from PySide6 import QtCore, QtWidgets, QtGui
