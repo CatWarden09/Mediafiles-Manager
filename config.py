@@ -1,7 +1,7 @@
 import sys
 import os
 
-VERSION = "0.9.2"
+VERSION = "0.9.3-beta"
 
 
 def assign_script_dir():
@@ -11,10 +11,13 @@ def assign_script_dir():
         script_dir = os.path.dirname(os.path.abspath(__file__))
     return script_dir
 
+
 FFMPEG_PATH = os.path.join(assign_script_dir(), "ffmpeg.exe")
+
 
 def get_ffmpeg_path() -> str:
     return FFMPEG_PATH
+
 
 env_path = os.path.join(assign_script_dir(), ".env")
 
