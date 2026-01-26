@@ -3,7 +3,7 @@ import sys
 import config
 
 from dotenv import load_dotenv
-from fhandler import FileHandler, DatabaseHandler
+from fhandler import FileHandler, DatabaseHandler, FileScanner
 
 
 from PySide6 import QtCore, QtWidgets, QtGui
@@ -357,23 +357,6 @@ class TagsList(QtWidgets.QWidget):
             if item.checkState() == QtCore.Qt.Checked:
                 item.setCheckState(QtCore.Qt.Unchecked)
 
-    # @QtCore.Slot()
-    # def on_item_changed(self, item: QtWidgets.QListWidgetItem):
-
-    #     if item.checkState() == QtCore.Qt.Checked:
-    #         if item.text() not in self.changed_items:
-    #             self.changed_items.append(item.text())
-    #     else:
-    #         if item.text() in self.changed_items:
-    #             self.changed_items.remove(item.text())
-    #     if len(self.changed_items) >= 1:
-    #         self.search_files = db.get_files_by_tags(self.changed_items)
-    #     else:
-    #         self.search_files = ["Null"]
-
-    #     self.main_window.display_files_list(self.search_files)
-
-
 class PreviewWindow(QtWidgets.QWidget):
     def __init__(self, main_window, tags_list):
 
@@ -649,6 +632,7 @@ if __name__ == "__main__":
 
     fhandler = FileHandler(db)
     error_window = ErrorWindow()
+    #FileScanner.count_all_files()
 
     # create the main program window
     main_window = MainWindow()

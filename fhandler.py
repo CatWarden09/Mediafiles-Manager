@@ -5,6 +5,10 @@ import ffmpeg
 import sqlite3
 import config
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 ALLOWED_IMAGE_FORMATS = [".jpeg", ".jpg", ".png", ".gif", ".bmp", ".tiff", ".jfif"]
 ALLOWED_VIDEO_FORMATS = [
     ".mp4",
@@ -32,6 +36,29 @@ ALLOWED_AUDIO_FORMATS = [
 ]
 
 ALLOWED_TYPES = ALLOWED_IMAGE_FORMATS + ALLOWED_VIDEO_FORMATS + ALLOWED_AUDIO_FORMATS
+
+class FileScanner:
+    def count_all_files():
+        folder = os.getenv("FOLDER_PATH")
+        
+        counter = 0
+        
+        for _, subfolders, files in os.walk(folder):
+            # create the new subfolders list for the os.walk without the thumbnails folder
+            subfolders[:] = [subfolder for subfolder in subfolders if subfolder.lower() != "thumbnails"] 
+            counter += len(files)
+        return counter
+
+
+    def save_files_count(counter):
+        pass
+
+    def compare_files_count():
+        pass
+
+        # if the actual files counter if > than the one saved in the .env, generate previews for the new files and update files list in the UI
+    def update_files_list():
+        pass
 
 
 # TODO add a check if the thumbnails folder already exists and skip these methods
