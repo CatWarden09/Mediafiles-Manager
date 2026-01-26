@@ -37,27 +37,62 @@ ALLOWED_AUDIO_FORMATS = [
 
 ALLOWED_TYPES = ALLOWED_IMAGE_FORMATS + ALLOWED_VIDEO_FORMATS + ALLOWED_AUDIO_FORMATS
 
+
 class FileScanner:
-    def count_all_files():
+    def __init__(self, db):
+        self.db = db
+
+    def count_all_files(self):
         folder = os.getenv("FOLDER_PATH")
-        
+
         counter = 0
-        
+
         for _, subfolders, files in os.walk(folder):
             # create the new subfolders list for the os.walk without the thumbnails folder
-            subfolders[:] = [subfolder for subfolder in subfolders if subfolder.lower() != "thumbnails"] 
+            subfolders[:] = [
+                subfolder
+                for subfolder in subfolders
+                if subfolder.lower() != "thumbnails"
+            ]
             counter += len(files)
         return counter
 
+    def compare_files_count(self):
+        counter = self.count_all_files()
 
-    def save_files_count(counter):
-        pass
+        # for the first program launch
+        if os.getenv("FILES_COUNT") is None:
+            config.save_to_env("FILES_COUNT", counter)
+        elif counter != os.getenv("FILES_COUNT"):
+            self.get_files_difference()
 
-    def compare_files_count():
-        pass
+    def get_files_difference(self):
+        folder = os.getenv("FOLDER_PATH")
 
-        # if the actual files counter if > than the one saved in the .env, generate previews for the new files and update files list in the UI
-    def update_files_list():
+        db_files = set(self.db.get_all_filepaths())
+        current_files = set()
+
+        for folder, subfolders, files in os.walk(folder):
+            # create the new subfolders list for the os.walk without the thumbnails folder
+            subfolders[:] = [
+                subfolder
+                for subfolder in subfolders
+                if subfolder.lower() != "thumbnails"
+            ]
+
+            for filepath in files:
+                current_files.add(os.path.join(folder, filepath))
+
+        new_files_paths = current_files - db_files
+        deleted_files_paths = db_files - current_files
+
+        if new_files_paths:
+            self.update_files_list(new_files_paths)
+        if deleted_files_paths:
+            self.db.delete_file_by_filepath(deleted_files_paths)
+
+    # if the actual files counter != the one saved in the .env, generate previews for the new files and update files list in the UI
+    def update_files_list(self, new_files_paths):
         pass
 
 
@@ -114,7 +149,7 @@ class FileHandler:
     def create_video_thumbnail(self, folder):
         save_path = os.path.join(folder, "thumbnails")
         # TODO add ffmpeg search in system\program dir
-        
+
         for file in os.listdir(folder):
 
             if os.path.splitext(file)[1].lower() in ALLOWED_VIDEO_FORMATS:
@@ -261,20 +296,6 @@ class DatabaseHandler:
             )
         self.save_changes()
 
-    # Delete all tag-file pairs where ids of tags and files are equal to the method arguments
-    def delete_current_item_tags(self, item, tags_list):
-        for tag in tags_list:
-            self.cursor.execute(
-                """
-                DELETE FROM Files_tags
-                WHERE file_id = (SELECT id FROM Files WHERE filename = ?)
-                AND tag_id = (SELECT id FROM Tags WHERE tagname = ?)
-
-                """,
-                (item, tag),
-            )
-        self.save_changes()
-
     # check if the tag is already in the table and return True if the DB query returns !=Null, return False otherwise
     def tag_exists(self, tag_name: str) -> bool:
         self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))
@@ -296,6 +317,11 @@ class DatabaseHandler:
         self.cursor.execute("SELECT filepath FROM Files where filename = ?", (file,))
         row = self.cursor.fetchone()
         return row[0]
+
+    def get_all_filepaths(self):
+        self.cursor.execute("SELECT filepath FROM Files")
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
 
     def get_files_by_tags(self, tags_list):
         if not tags_list:
@@ -331,3 +357,21 @@ class DatabaseHandler:
         self.cursor.execute("SELECT description FROM Files WHERE filename = ?", (file,))
         row = self.cursor.fetchone()
         return row[0]
+
+    # Delete all tag-file pairs where ids of tags and files are equal to the method arguments
+    def delete_current_item_tags(self, item, tags_list):
+        for tag in tags_list:
+            self.cursor.execute(
+                """
+                DELETE FROM Files_tags
+                WHERE file_id = (SELECT id FROM Files WHERE filename = ?)
+                AND tag_id = (SELECT id FROM Tags WHERE tagname = ?)
+
+                """,
+                (item, tag),
+            )
+        self.save_changes()
+
+    def delete_file_by_filepath(self, filepaths):
+        for filepath in filepaths:
+            self.cursor.execute("DELETE FROM Files WHERE filepath = ?", (filepath,))
