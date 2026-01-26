@@ -631,8 +631,8 @@ if __name__ == "__main__":
     db.connect_to_database()
 
     fhandler = FileHandler(db)
+    fscanner = FileScanner(db)
     error_window = ErrorWindow()
-    #FileScanner.count_all_files()
 
     # create the main program window
     main_window = MainWindow()
