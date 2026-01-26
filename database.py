@@ -13,7 +13,7 @@ class DatabaseHandler:
             """
         CREATE TABLE IF NOT EXISTS Files (
         id INTEGER PRIMARY KEY,
-        filename TEXT NOT NULL UNIQUE,
+        filename TEXT NOT NULL,
         filepath TEXT NOT NULL UNIQUE,
         previewpath TEXT NOT NULL,
         description TEXT
@@ -127,11 +127,14 @@ class DatabaseHandler:
         self.cursor.execute("SELECT 1 FROM Tags WHERE tagname = ?", (tag_name,))
         return self.cursor.fetchone() is not None
 
-    def get_previewpath(self, file):
+    def get_previewpath_by_filename(self, file):
         self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))
         row = self.cursor.fetchone()
-        # print(previewpath)
-
+        return row[0]
+    
+    def get_previewpath_by_filepath(self, filepath):
+        self.cursor.execute("SELECT previewpath FROM Files WHERE filepath = ?", (filepath,))
+        row = self.cursor.fetchone()
         return row[0]
 
     def get_all_filenames(self):

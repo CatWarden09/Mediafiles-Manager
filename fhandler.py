@@ -1,14 +1,25 @@
-import os
+import os, subprocess
 from PIL import Image
 
 import ffmpeg
 import config
 
+from PySide6.QtCore import QObject, Signal
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-ALLOWED_IMAGE_FORMATS = [".jpeg", ".jpg", ".png", ".gif", ".bmp", ".tiff", ".jfif"]
+ALLOWED_IMAGE_FORMATS = [
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".jfif",
+    ".webp",
+]
 ALLOWED_VIDEO_FORMATS = [
     ".mp4",
     ".mkv",
@@ -97,79 +108,89 @@ class FileScanner:
 
 # TODO add a check if the thumbnails folder already exists and skip these methods
 # (for the future features in case user changes folder back to the previous one !- need to check if there are any changes in files)
-# TODO add automatic audio thumbnail creation
-# TODO add automatic tags creation for typical files (like images, videos etc.)
-class FileHandler:
+# DONE add automatic audio thumbnail creation
+# DONE add automatic tags creation for typical files (like images, videos etc.)
+class FileHandler(QObject):
+    progress = Signal(int, int)
+    finished = Signal(str)
+    thumb_created = Signal(str, str, str, list)
 
     def __init__(self, db):
+        super().__init__()
         self.db = db
 
-    def create_audio_thumbnail(self, folder):
-        thumb_file = os.path.join(config.assign_script_dir(), "icons", "audio.png")
-        print(folder)
-        for item in folder:
-            filename = item["filename"]
-            file_path = item["file_path"]
-            if os.path.splitext(filename)[1].lower() in ALLOWED_AUDIO_FORMATS:
-                self.db.save_to_database(filename, file_path, thumb_file)
-                self.db.save_current_item_tags(filename, ["Audio"])
-
     def clear_files_list(self, folder):
-        filtered = []
+        filtered_filepaths = []
 
-        for f in os.listdir(folder):
-            if os.path.splitext(f)[1].lower() in ALLOWED_TYPES:
-                filtered.append({"filename": f, "file_path": os.path.join(folder, f)})
-                # TODO deprecate the dictionary
-                # most probably the file_path here and the dictionary is no longer needed since everything is in the DB
-        self.create_audio_thumbnail(filtered)
-        return filtered
+        for folder, subfolders, files in os.walk(folder):
+            # create the new subfolders list for the os.walk without the thumbnails folder
+            subfolders[:] = [
+                subfolder
+                for subfolder in subfolders
+                if subfolder.lower() != "thumbnails"
+            ]
 
-    # TODO merge with video thubmnail method and refactor so it works with filtered file list from the method above (can pass it from main)
-    # because now we have 3 separate methods that do similar job with the same list at the same time
+            for file in files:
+                filtered_filepaths.append(os.path.join(folder, file))
 
-    def create_image_thumbnail(self, folder):
+        self.create_thumbnails(filtered_filepaths, folder)
+        return filtered_filepaths
+
+    def create_thumbnails(self, filepaths, folder):
+
+        progress_counter = 0
+        tags = []
+
         save_path = os.path.join(folder, "thumbnails")
         os.makedirs(save_path, exist_ok=True)
 
-        size = 128, 128
-        for file in os.listdir(folder):
-            if os.path.splitext(file)[1].lower() in ALLOWED_IMAGE_FORMATS:
-                with Image.open(os.path.join(folder, file)) as img:
-                    img.thumbnail(size)
-                    thumb_file = os.path.join(
-                        save_path, os.path.splitext(file)[0] + ".png"
+        img_thumb_size = 128, 128
+        audio_thumb_file = os.path.join(
+            config.assign_script_dir(), "icons", "audio.png"
+        )
+
+        for filepath in filepaths:
+
+            filename = os.path.basename(filepath)
+            file_format = os.path.splitext(filename)[1].lower()
+
+            if file_format in ALLOWED_IMAGE_FORMATS:
+                with Image.open(filepath) as img:
+                    img.thumbnail(img_thumb_size)
+                    thumb_filepath = os.path.join(
+                        save_path, os.path.splitext(filename)[0] + ".png"
                     )
-                    img.save(thumb_file)
-                file_path = os.path.join(folder, file)
-                self.db.save_to_database(file, file_path, thumb_file)
-                self.db.save_current_item_tags(file, ["Image"])
+                    img.save(thumb_filepath)
+                tags = ["Image"]
 
-    def create_video_thumbnail(self, folder):
-        save_path = os.path.join(folder, "thumbnails")
-        # TODO add ffmpeg search in system\program dir
-
-        for file in os.listdir(folder):
-
-            if os.path.splitext(file)[1].lower() in ALLOWED_VIDEO_FORMATS:
+            elif file_format in ALLOWED_VIDEO_FORMATS:
                 (
                     ffmpeg.input(
-                        os.path.join(folder, file),
+                        filepath,
                         ss=1,
                     )
                     .filter("scale", 512, -1)
                     .output(
-                        os.path.join(save_path, os.path.splitext(file)[0] + ".png"),
+                        os.path.join(save_path, os.path.splitext(filename)[0] + ".png"),
                         vframes=1,
                         n=None,
                     )
-                    .run(cmd=config.get_ffmpeg_path())
+                    .run(cmd=config.get_ffmpeg_path(),
+                         creationflags=subprocess.CREATE_NO_WINDOW,
+                         )
                 )
-                file_path = os.path.join(folder, file)
-                preview_path = os.path.join(
-                    save_path, os.path.splitext(file)[0] + ".png"
+                thumb_filepath = os.path.join(
+                    save_path, os.path.splitext(filename)[0] + ".png"
                 )
-                self.db.save_to_database(file, file_path, preview_path)
-                self.db.save_current_item_tags(file, ["Video"])
 
+                tags = ["Video"]
 
+            elif file_format in ALLOWED_AUDIO_FORMATS:
+                thumb_filepath = audio_thumb_file
+                tags = ["Audio"]
+
+            progress_counter += 1
+            self.progress.emit(progress_counter, len(filepaths))
+            self.thumb_created.emit(filename, filepath, thumb_filepath, tags)
+
+        self.finished.emit(folder)
