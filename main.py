@@ -7,7 +7,7 @@ from database import DatabaseHandler
 
 
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtWidgets import QListView, QProgressBar
+from PySide6.QtWidgets import QListView, QProgressBar, QTreeWidget, QTreeWidgetItem
 from PySide6.QtCore import QSize
 from PySide6.QtCore import Qt, QMimeData, QUrl, QThread
 from PySide6.QtGui import QDrag
@@ -21,6 +21,32 @@ debug = False
 
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
 
+
+class FoldersListWindow(QtWidgets.QTreeWidget):
+    def __init__(self):
+        super().__init__()
+
+
+        self.setHeaderHidden(True)
+        self.setFixedWidth(200)
+
+    def display_folder_list(self, folder):        
+        self.clear()
+        root_item = self.populate_tree(folder)
+        self.addTopLevelItem(root_item)
+
+    def populate_tree(self, folder):
+        tree_item = QTreeWidgetItem()
+        tree_item.setText(0, os.path.basename(folder))
+        icon_path = os.path.join(config.assign_script_dir(), "icons", "folder_icon.png")
+        tree_item.setIcon(0, QIcon(icon_path))
+
+        for dir in os.listdir(folder):
+            dir_path = os.path.join(folder, dir)
+            if os.path.isdir(dir_path) and dir.lower() != "thumbnails":
+                tree_item.addChild(self.populate_tree(dir_path))
+
+        return tree_item
 
 class FileDragList(QtWidgets.QListWidget):
     def startDrag(self, supportedActions):
@@ -357,6 +383,7 @@ class TagsList(QtWidgets.QWidget):
             if item.checkState() == QtCore.Qt.Checked:
                 item.setCheckState(QtCore.Qt.Unchecked)
 
+
 class PreviewWindow(QtWidgets.QWidget):
     def __init__(self, main_window, tags_list):
 
@@ -460,7 +487,8 @@ class PreviewWindow(QtWidgets.QWidget):
                     error_window.show_error_message("Укажите описание файла!")
         else:
             return
-        
+
+
 class ThumbCreationThread(QThread):
     def __init__(self, fhandler, folder):
         super().__init__()
@@ -482,10 +510,12 @@ class MainWindow(QtWidgets.QWidget):
         self.fhandler.finished.connect(self.on_finished)
         self.fhandler.thumb_created.connect(self.on_thumb_created)
 
-
         self.tags_list = TagsList(self)
         self.preview_window = PreviewWindow(self, self.tags_list)
         self.searchbar = SearchBar(self, self.tags_list)
+
+        # create the main folders list window
+        self.folder_list_window = FoldersListWindow()
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow(self.tags_list)
@@ -530,6 +560,7 @@ class MainWindow(QtWidgets.QWidget):
 
         # create the Hbox for files list and file preview widgets and put it into the main Vbox
         self.files_layout = QtWidgets.QHBoxLayout()
+        self.files_layout.addWidget(self.folder_list_window)
         self.files_layout.addLayout(self.list_layout)
         self.files_layout.addWidget(self.preview_window)
 
@@ -546,12 +577,14 @@ class MainWindow(QtWidgets.QWidget):
 
         # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
+            folder = os.getenv("FOLDER_PATH")
             self.button.hide()
             self.tags_button.show()
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
             self.display_files_list(["Null"])
+            self.folder_list_window.display_folder_list(folder)
 
     def get_current_item(self):
         current_item = self.list.currentItem()
@@ -581,7 +614,6 @@ class MainWindow(QtWidgets.QWidget):
     # button click event
     @QtCore.Slot()
     def on_button_clicked(self):
-        
 
         filepaths_list = []
 
@@ -604,21 +636,19 @@ class MainWindow(QtWidgets.QWidget):
                 # hide add folder button and show tags button and window
                 # if not debug:
 
-
-
-
-    @QtCore.Slot(str,str,str,list)
+    @QtCore.Slot(str, str, str, list)
     def on_thumb_created(self, filename, filepath, thumb_filepath, tags):
         db.save_to_database(filename, filepath, thumb_filepath)
         db.save_current_item_tags(filename, tags)
         db.save_changes()
-    
+
     def on_progress(self, counter, total):
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(counter)
 
     def on_finished(self, folder):
         self.display_files_list(["Null"])
+        self.folder_list_window.display_folder_list(folder)
         self.progress_bar.hide()
         config.save_to_env("IS_FOLDER_CHOSEN", "True")
         config.save_to_env("FOLDER_PATH", folder)
@@ -629,8 +659,6 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
-
-
 
     def display_files_list(self, search_list):
         self.list.clear()
@@ -661,7 +689,6 @@ if __name__ == "__main__":
     db = DatabaseHandler()
     db.connect_to_database()
 
-    
     fscanner = FileScanner(db)
     error_window = ErrorWindow()
 

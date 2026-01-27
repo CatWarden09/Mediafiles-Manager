@@ -122,7 +122,8 @@ class FileHandler(QObject):
     def clear_files_list(self, folder):
         filtered_filepaths = []
 
-        for folder, subfolders, files in os.walk(folder):
+
+        for current_folder, subfolders, files in os.walk(folder):
             # create the new subfolders list for the os.walk without the thumbnails folder
             subfolders[:] = [
                 subfolder
@@ -131,7 +132,7 @@ class FileHandler(QObject):
             ]
 
             for file in files:
-                filtered_filepaths.append(os.path.join(folder, file))
+                filtered_filepaths.append(os.path.join(current_folder, file))
 
         self.create_thumbnails(filtered_filepaths, folder)
         return filtered_filepaths
@@ -174,10 +175,9 @@ class FileHandler(QObject):
                         os.path.join(save_path, os.path.splitext(filename)[0] + ".png"),
                         vframes=1,
                         n=None,
+                        loglevel="quiet"
                     )
-                    .run(cmd=config.get_ffmpeg_path(),
-                         creationflags=subprocess.CREATE_NO_WINDOW,
-                         )
+                    .run(cmd=config.get_ffmpeg_path())
                 )
                 thumb_filepath = os.path.join(
                     save_path, os.path.splitext(filename)[0] + ".png"
