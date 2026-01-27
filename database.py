@@ -213,6 +213,5 @@ class DatabaseHandler:
             )
         self.save_changes()
 
-    def delete_file_by_filepath(self, filepaths):
-        for filepath in filepaths:
-            self.cursor.execute("DELETE FROM Files WHERE filepath = ?", (filepath,))
+    def delete_file_by_filepath(self, filepath):
+        self.cursor.execute("DELETE FROM Files WHERE filepath = ?", (filepath,))

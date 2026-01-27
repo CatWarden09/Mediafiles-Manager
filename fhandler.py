@@ -49,8 +49,9 @@ ALLOWED_TYPES = ALLOWED_IMAGE_FORMATS + ALLOWED_VIDEO_FORMATS + ALLOWED_AUDIO_FO
 
 
 class FileScanner:
-    def __init__(self, db):
+    def __init__(self, db, fhandler):
         self.db = db
+        self.fhandler = fhandler
 
     def count_all_files(self):
         folder = os.getenv("FOLDER_PATH")
@@ -68,13 +69,22 @@ class FileScanner:
         return counter
 
     def compare_files_count(self):
+
+        difference_found = []
+
         counter = self.count_all_files()
+        print("Files counter = ", counter)
+
+        saved_counter = config.get_files_count()
 
         # for the first program launch
-        if os.getenv("FILES_COUNT") is None:
-            config.save_to_env("FILES_COUNT", counter)
-        elif counter != os.getenv("FILES_COUNT"):
-            self.get_files_difference()
+        if saved_counter is None:
+            config.save_files_count(counter)
+        elif counter != saved_counter:
+            config.save_files_count(counter)
+            difference_found = self.get_files_difference()
+        
+        return difference_found
 
     def get_files_difference(self):
         folder = os.getenv("FOLDER_PATH")
@@ -91,19 +101,32 @@ class FileScanner:
             ]
 
             for filepath in files:
-                current_files.add(os.path.join(folder, filepath))
+                current_files.add(self.fhandler.normalize_filepath(os.path.join(folder, filepath)))
 
         new_files_paths = current_files - db_files
         deleted_files_paths = db_files - current_files
-
+        
+        difference_found = []
         if new_files_paths:
             self.update_files_list(new_files_paths)
+            difference_found.append("new_files")
         if deleted_files_paths:
-            self.db.delete_file_by_filepath(deleted_files_paths)
+            print("Deleted files paths are", deleted_files_paths)
+
+            for path in deleted_files_paths:
+                self.db.delete_file_by_filepath(path)
+            self.db.save_changes()
+
+            
+            difference_found.append("deleted_files") 
+
+        return difference_found
 
     # if the actual files counter != the one saved in the .env, generate previews for the new files and update files list in the UI
     def update_files_list(self, new_files_paths):
-        pass
+        folder = os.getenv("FOLDER_PATH")
+        self.fhandler.create_thumbnails(new_files_paths, folder)
+        
 
 
 # TODO add a check if the thumbnails folder already exists and skip these methods
@@ -119,6 +142,9 @@ class FileHandler(QObject):
         super().__init__()
         self.db = db
 
+    def normalize_filepath(self, path):
+        return os.path.abspath(os.path.normpath(path))
+
     def clear_files_list(self, folder):
         filtered_filepaths = []
 
@@ -132,7 +158,7 @@ class FileHandler(QObject):
             ]
 
             for file in files:
-                filtered_filepaths.append(os.path.join(current_folder, file))
+                filtered_filepaths.append((self.normalize_filepath(os.path.join(current_folder, file))))
 
         self.create_thumbnails(filtered_filepaths, folder)
         return filtered_filepaths
