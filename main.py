@@ -7,7 +7,7 @@ from database import DatabaseHandler
 
 
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtWidgets import QListView, QProgressBar, QTreeWidget, QTreeWidgetItem
+from PySide6.QtWidgets import QListView, QProgressBar, QTreeWidgetItem
 from PySide6.QtCore import QSize
 from PySide6.QtCore import Qt, QMimeData, QUrl, QThread
 from PySide6.QtGui import QDrag
@@ -23,12 +23,13 @@ PROTECTED_TAGS = ["Audio", "Video", "Image"]
 
 
 class FoldersListWindow(QtWidgets.QTreeWidget):
-    def __init__(self):
+    def __init__(self, main_window):
         super().__init__()
-
+        self.main_window = main_window
 
         self.setHeaderHidden(True)
         self.setFixedWidth(200)
+        self.itemClicked.connect(self.on_item_clicked)
 
     def display_folder_list(self, folder):        
         self.clear()
@@ -38,8 +39,11 @@ class FoldersListWindow(QtWidgets.QTreeWidget):
     def populate_tree(self, folder):
         tree_item = QTreeWidgetItem()
         tree_item.setText(0, os.path.basename(folder))
+
         icon_path = os.path.join(config.assign_script_dir(), "icons", "folder_icon.png")
         tree_item.setIcon(0, QIcon(icon_path))
+
+        tree_item.setData(0, Qt.UserRole, folder)
 
         for dir in os.listdir(folder):
             dir_path = os.path.join(folder, dir)
@@ -47,6 +51,11 @@ class FoldersListWindow(QtWidgets.QTreeWidget):
                 tree_item.addChild(self.populate_tree(dir_path))
 
         return tree_item
+    
+    def on_item_clicked(self, item):
+        current_path = item.data(0, Qt.UserRole)
+        self.main_window.display_files_list(current_path, "folder_tree")
+
 
 class FileDragList(QtWidgets.QListWidget):
     def startDrag(self, supportedActions):
@@ -106,14 +115,14 @@ class SearchBar(QtWidgets.QWidget):
         else:
             all_files = db.get_all_filenames()
 
-        self.main_window.display_files_list(all_files)
+        self.main_window.display_files_list(all_files, "searchbar_clicked")
 
     @QtCore.Slot()
     def on_cancel_button_clicked(self):
         self.searchbar.clear()
         self.tags_list_ui.deselect_all_tags()
         all_files = db.get_all_filenames()
-        self.main_window.display_files_list(all_files)
+        self.main_window.display_files_list(all_files, "searchbar_canceled")
 
 
 class ErrorWindow(QtWidgets.QWidget):
@@ -515,7 +524,7 @@ class MainWindow(QtWidgets.QWidget):
         self.searchbar = SearchBar(self, self.tags_list)
 
         # create the main folders list window
-        self.folder_list_window = FoldersListWindow()
+        self.folder_list_window = FoldersListWindow(self)
 
         # create the tags settings window
         self.tags_settings_window = TagsSettingsWindow(self.tags_list)
@@ -583,7 +592,7 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
-            self.display_files_list(["Null"])
+            self.display_files_list(folder, "program_launch")
             self.folder_list_window.display_folder_list(folder)
 
     def get_current_item(self):
@@ -647,7 +656,7 @@ class MainWindow(QtWidgets.QWidget):
         self.progress_bar.setValue(counter)
 
     def on_finished(self, folder):
-        self.display_files_list(["Null"])
+        self.display_files_list(folder, "program_launch")
         self.folder_list_window.display_folder_list(folder)
         self.progress_bar.hide()
         config.save_to_env("IS_FOLDER_CHOSEN", "True")
@@ -660,16 +669,19 @@ class MainWindow(QtWidgets.QWidget):
             self.searchbar.show()
             self.tags_list.update_tags_list()
 
-    def display_files_list(self, search_list):
-        self.list.clear()
+    def display_files_list(self, files_list_source, keyword:str):
+        # define the files list source depending on where this method is called from
+        match keyword:
+            case "program_launch" | "searchbar_canceled":
+                files_list = db.get_all_filenames()
+            case "searchbar_clicked":
+                files_list = files_list_source
+            case "folder_tree":
+                files_list = db.get_files_by_filepath(files_list_source)
+            case _:
+                files_list = []
 
-        # check if the list is built for the first time or by tag list checkboxes changing
-        if search_list == ["Null"]:
-            files_list = db.get_all_filenames()
-        elif search_list:
-            files_list = search_list
-        else:
-            files_list = []
+        self.list.clear()
 
         for file in files_list:
 
