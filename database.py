@@ -141,9 +141,21 @@ class DatabaseHandler:
         self.cursor.execute("SELECT filename FROM Files")
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
+    
+    def get_files_by_filepath(self, filepath):
+        self.cursor.execute(
+            "SELECT filename, filepath FROM Files WHERE filepath LIKE ?",
+            (filepath + '%',)
+        )
+        rows = self.cursor.fetchall()
+        files_in_folder = [
+            filename for filename, fullpath in rows
+            if os.path.dirname(fullpath) == filepath.rstrip(os.sep)
+        ]
+        return files_in_folder
 
     def get_filepath(self, file):
-        self.cursor.execute("SELECT filepath FROM Files where filename = ?", (file,))
+        self.cursor.execute("SELECT filepath FROM Files WHERE filename = ?", (file,))
         row = self.cursor.fetchone()
         return row[0]
 
