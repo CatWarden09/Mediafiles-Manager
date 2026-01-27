@@ -519,6 +519,9 @@ class MainWindow(QtWidgets.QWidget):
         self.fhandler.finished.connect(self.on_finished)
         self.fhandler.thumb_created.connect(self.on_thumb_created)
 
+        self.fscanner = FileScanner(db, self.fhandler)
+
+
         self.tags_list = TagsList(self)
         self.preview_window = PreviewWindow(self, self.tags_list)
         self.searchbar = SearchBar(self, self.tags_list)
@@ -584,6 +587,7 @@ class MainWindow(QtWidgets.QWidget):
         # connecting to the tags button click
         self.tags_button.clicked.connect(self.on_tags_button_clicked)
 
+
         # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
             folder = os.getenv("FOLDER_PATH")
@@ -594,6 +598,15 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.update_tags_list()
             self.display_files_list(folder, "program_launch")
             self.folder_list_window.display_folder_list(folder)
+
+            difference_found = []
+            difference_found = self.fscanner.compare_files_count()
+            if "new_files" in difference_found:
+                error_window.show_error_message("Обнаружены новые файлы! Выполняется создание превью")
+            if "deleted_files" in difference_found:
+                error_window.show_error_message("Обнаружены удаленные файлы! Выполняется удаление данных из программы")
+            elif len(difference_found) == 2:
+                error_window.show_error_message("Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов")
 
     def get_current_item(self):
         current_item = self.list.currentItem()
@@ -628,6 +641,7 @@ class MainWindow(QtWidgets.QWidget):
 
         files_dlg = QtWidgets.QFileDialog()
         folder = files_dlg.getExistingDirectory()
+        folder = os.path.abspath(os.path.normpath(folder))
 
         self.thumb_thread = ThumbCreationThread(self.fhandler, folder)
         if folder:
@@ -661,6 +675,9 @@ class MainWindow(QtWidgets.QWidget):
         self.progress_bar.hide()
         config.save_to_env("IS_FOLDER_CHOSEN", "True")
         config.save_to_env("FOLDER_PATH", folder)
+        
+        load_dotenv()
+        self.fscanner.compare_files_count()
 
         if not debug:
             self.button.hide()
@@ -701,7 +718,7 @@ if __name__ == "__main__":
     db = DatabaseHandler()
     db.connect_to_database()
 
-    fscanner = FileScanner(db)
+    
     error_window = ErrorWindow()
 
     # create the main program window

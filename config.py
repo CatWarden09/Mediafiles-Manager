@@ -1,5 +1,4 @@
-import sys
-import os
+import sys, os, json
 
 VERSION = "0.9.3-beta"
 
@@ -25,3 +24,20 @@ env_path = os.path.join(assign_script_dir(), ".env")
 def save_to_env(key, value):
     with open(env_path, "a", encoding="utf-8") as f:
         f.write(f"\n{key}={value}")
+
+counter_path = os.path.join(assign_script_dir(), "fhandler_data", "counter.json")
+
+def save_files_count(value: int):
+    os.makedirs(os.path.dirname(counter_path), exist_ok=True)
+
+    with open(counter_path, "w", encoding="utf-8") as f:
+        json.dump({"FILES_COUNT": value}, f)
+
+def get_files_count():
+    if not os.path.exists(counter_path):
+        return None
+
+    with open(counter_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    return data.get("FILES_COUNT")

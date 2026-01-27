@@ -186,3 +186,4 @@ cython_debug/
 *.db
 /icons
 ffmpeg.exe
+/fhandler_data
