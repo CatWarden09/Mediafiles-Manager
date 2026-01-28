@@ -1,6 +1,8 @@
 import sys, os, json
 
 VERSION = "0.9.4-beta"
+DEBUG = False
+
 
 def assign_script_dir():
     if getattr(sys, "frozen", False):
