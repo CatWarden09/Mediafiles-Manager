@@ -4,3 +4,4 @@ from .file_drag_list import FileDragList
 from .error_window import ErrorWindow
 from .tags_setting_windows import TagsSettingsWindow, ItemTagsSettingsWindow
 from .tags_list import TagsList
+from .preview_window import PreviewWindow
