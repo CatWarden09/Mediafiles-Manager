@@ -1,7 +1,6 @@
 import sys, os, json
 
-VERSION = "0.9.3-beta"
-
+VERSION = "0.9.4-beta"
 
 def assign_script_dir():
     if getattr(sys, "frozen", False):
@@ -41,3 +40,8 @@ def get_files_count():
         data = json.load(f)
 
     return data.get("FILES_COUNT")
+
+APP_ICON_PATH = os.path.join(assign_script_dir(), "icons", "app_icon.ico")
+
+def get_app_icon_path():
+    return APP_ICON_PATH
