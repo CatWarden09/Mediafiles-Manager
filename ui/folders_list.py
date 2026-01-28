@@ -39,3 +39,6 @@ class FoldersListWindow(QtWidgets.QTreeWidget):
     def on_item_clicked(self, item):
         current_path = item.data(0, Qt.UserRole)
         self.main_window.display_files_list(current_path, "folder_tree")
+
+    def clear_selection(self):
+        self.clearSelection()

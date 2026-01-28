@@ -24,6 +24,7 @@ from ui import (
 
 load_dotenv()
 
+
 class ThumbCreationThread(QThread):
     def __init__(self, fhandler, folder):
         super().__init__()
@@ -126,6 +127,9 @@ class MainWindow(QtWidgets.QWidget):
 
         # connecting to the tags button click
         self.tags_button.clicked.connect(self.on_tags_button_clicked)
+
+        # connect to the searchbar clicked signal
+        self.searchbar.clicked.connect(self.on_searchbar_clicked)
 
         # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
@@ -255,3 +259,7 @@ class MainWindow(QtWidgets.QWidget):
             item.setIcon(QIcon(str(icon_path)))
 
             self.list.addItem(item)
+
+    # clear the folder list selection when the searchbar actions are made
+    def on_searchbar_clicked(self):
+        self.folder_list_window.clear_selection()
