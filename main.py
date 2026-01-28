@@ -5,7 +5,6 @@ from PySide6 import QtWidgets, QtGui
 
 from ui import MainWindow
 
-debug = False
 
 if __name__ == "__main__":
 

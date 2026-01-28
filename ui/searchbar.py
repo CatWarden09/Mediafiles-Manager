@@ -4,6 +4,9 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 
 class SearchBar(QtWidgets.QWidget):
+    # signal for folder tree selection clearing when whether the search or cancel icons are clicked
+    clicked = QtCore.Signal()
+
     def __init__(self, main_window, tags_list_ui, db):
         super().__init__()
 
@@ -21,11 +24,23 @@ class SearchBar(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.addWidget(self.searchbar)
 
-        icon_path = os.path.join(config.assign_script_dir(), "icons", "close.png")
-        icon = QtGui.QIcon(str(icon_path))
-        action = self.searchbar.addAction(icon, QtWidgets.QLineEdit.TrailingPosition)
+        # create the actions for the searchbar - search and cancel icons clicked
+        cancel_icon_path = os.path.join(
+            config.assign_script_dir(), "icons", "close.png"
+        )
+        cancel_icon = QtGui.QIcon(str(cancel_icon_path))
+        cancel_action = self.searchbar.addAction(
+            cancel_icon, QtWidgets.QLineEdit.TrailingPosition
+        )
 
-        action.triggered.connect(self.on_cancel_button_clicked)
+        search_icon_path = os.path.join(
+            config.assign_script_dir(), "icons", "search_icon.png"
+        )
+        search_icon = QtGui.QIcon(str(search_icon_path))
+        search_action = self.searchbar.addAction(search_icon, QtWidgets.QLineEdit.LeadingPosition)
+
+        cancel_action.triggered.connect(self.on_cancel_button_clicked)
+        search_action.triggered.connect(self.on_search_query_input)
 
     @QtCore.Slot()
     def on_search_query_input(self):
@@ -46,9 +61,13 @@ class SearchBar(QtWidgets.QWidget):
 
         self.main_window.display_files_list(all_files, "searchbar_clicked")
 
+        self.clicked.emit()
+
     @QtCore.Slot()
     def on_cancel_button_clicked(self):
         self.searchbar.clear()
         self.tags_list_ui.deselect_all_tags()
         all_files = self.db.get_all_filenames()
         self.main_window.display_files_list(all_files, "searchbar_canceled")
+
+        self.clicked.emit()
