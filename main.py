@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt, QMimeData, QUrl, QThread
 from PySide6.QtGui import QDrag
 from PySide6.QtGui import QIcon
 
-from ui import FoldersListWindow
+from ui import FoldersListWindow, SearchBar
 
 from pathlib import Path
 
@@ -24,12 +24,16 @@ debug = False
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
 
 class FileDragList(QtWidgets.QListWidget):
+    def __init__(self, db):
+        super().__init__()
+        self.db = db
+
     def startDrag(self, supportedActions):
         item = self.currentItem()
         if not item:
             return
 
-        file_path = db.get_filepath(item.text())
+        file_path = self.db.get_filepath(item.text())
         if not file_path or not Path(file_path).exists():
             return
 
@@ -39,57 +43,6 @@ class FileDragList(QtWidgets.QListWidget):
         drag.setMimeData(mime_data)
 
         drag.exec(Qt.CopyAction)
-
-
-class SearchBar(QtWidgets.QWidget):
-    def __init__(self, main_window, tags_list_ui):
-        super().__init__()
-
-        self.tags_list_ui = tags_list_ui
-        self.main_window = main_window
-
-        # create the search bar
-        self.searchbar = QtWidgets.QLineEdit(self)
-        self.searchbar.setPlaceholderText("Поиск по названию или описанию файла...")
-
-        self.searchbar.returnPressed.connect(self.on_search_query_input)
-
-        # create a layout to show the search bar in the main window correctly
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.addWidget(self.searchbar)
-
-        icon_path = os.path.join(config.assign_script_dir(), "icons", "close.png")
-        icon = QtGui.QIcon(str(icon_path))
-        action = self.searchbar.addAction(icon, QtWidgets.QLineEdit.TrailingPosition)
-
-        action.triggered.connect(self.on_cancel_button_clicked)
-
-    @QtCore.Slot()
-    def on_search_query_input(self):
-        query = self.searchbar.text()
-        tags = self.tags_list_ui.get_selected_tags()
-
-        if tags and query.strip():
-
-            files_by_tags = db.get_files_by_tags(tags)
-            files_by_description = db.get_files_by_text(query)
-            all_files = [file for file in files_by_tags if file in files_by_description]
-        elif tags:
-            all_files = db.get_files_by_tags(tags)
-        elif query.strip():
-            all_files = db.get_files_by_text(query)
-        else:
-            all_files = db.get_all_filenames()
-
-        self.main_window.display_files_list(all_files, "searchbar_clicked")
-
-    @QtCore.Slot()
-    def on_cancel_button_clicked(self):
-        self.searchbar.clear()
-        self.tags_list_ui.deselect_all_tags()
-        all_files = db.get_all_filenames()
-        self.main_window.display_files_list(all_files, "searchbar_canceled")
-
 
 class ErrorWindow(QtWidgets.QWidget):
     def __init__(self):
@@ -108,9 +61,11 @@ class ErrorWindow(QtWidgets.QWidget):
 
 class TagsSettingsWindow(QtWidgets.QWidget):
     # TODO add confirm window when deleting a tag
-    def __init__(self, tags_list):
+    def __init__(self, tags_list, db, error_window):
         super().__init__()
 
+        self.db = db
+        self.error_window = error_window
         self.main_tags_list = tags_list
 
         self.setWindowIcon(QtGui.QIcon(str(icon_path)))
@@ -144,7 +99,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
     def update_tags_list(self):
         self.tags_list.clear()
 
-        tags_list = db.get_all_tagnames()
+        tags_list = self.db.get_all_tagnames()
 
         for tag in tags_list:
             item = QtWidgets.QListWidgetItem(tag)
@@ -161,35 +116,38 @@ class TagsSettingsWindow(QtWidgets.QWidget):
         if ok:
             if tag_name.strip():
                 # TODO add protection from creating same tags but with different register (Audio - audio) etc.
-                if not db.tag_exists(tag_name):
-                    db.save_tag_to_database(tag_name)
+                if not self.db.tag_exists(tag_name):
+                    self.db.save_tag_to_database(tag_name)
                     self.add_tags_to_list(tag_name)
                     self.main_tags_list.update_tags_list()
                 else:
-                    error_window.show_error_message(
+                    self.error_window.show_error_message(
                         "Тег с таким названием уже добавлен!"
                     )
             else:
-                error_window.show_error_message("Укажите название тега!")
+                self.error_window.show_error_message("Укажите название тега!")
 
     @QtCore.Slot()
     def on_delete_button_clicked(self):
         item = self.tags_list.currentItem()
 
         if item is None:
-            error_window.show_error_message("Выберите тег для удаления!")
+            self.error_window.show_error_message("Выберите тег для удаления!")
         elif item.text() in PROTECTED_TAGS:
-            error_window.show_error_message("Невозможно удалить стандартные теги!")
+            self.error_window.show_error_message("Невозможно удалить стандартные теги!")
         else:
             tag = item.text()
-            db.delete_tag_from_database(tag)
+            self.db.delete_tag_from_database(tag)
             self.update_tags_list()
             self.main_tags_list.update_tags_list()
 
 
 class ItemTagsSettingsWindow(TagsSettingsWindow):
-    def __init__(self, main_window, preview_window, tags_list):
-        super().__init__(tags_list)
+    def __init__(self, main_window, preview_window, tags_list, db, error_window):
+        super().__init__(tags_list, db, error_window)
+
+        self.db = db
+        self.error_window = error_window
         self.setWindowTitle("Изменить теги")
         self.main_window = main_window
         self.preview_window = preview_window
@@ -242,9 +200,9 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         self.common_tags_list.clear()
         self.current_tags_list.clear()
 
-        self.current_tags_tuple = db.get_current_item_tags(current_item)
+        self.current_tags_tuple = self.db.get_current_item_tags(current_item)
         self.common_tags_tuple = [
-            tag for tag in db.get_all_tagnames() if tag not in self.current_tags_tuple
+            tag for tag in self.db.get_all_tagnames() if tag not in self.current_tags_tuple
         ]
 
         self.update_lists(self.current_tags_list, self.current_tags_tuple)
@@ -278,13 +236,13 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         standard_tags_count = sum(tag in PROTECTED_TAGS for tag in all_tags_after_add)
 
         if not selected_tags:
-            error_window.show_error_message("Не выбран ни один тег для добавления!")
+            self.error_window.show_error_message("Не выбран ни один тег для добавления!")
         elif standard_tags_count > 1:
-            error_window.show_error_message(
+            self.error_window.show_error_message(
                 "Невозможно добавить более одного стандартного тега!"
             )
         else:
-            db.save_current_item_tags(current_item, selected_tags)
+            self.db.save_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
             self.preview_window.update_item_tags_list(current_item)
 
@@ -298,21 +256,23 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         protected_tag_found = any(tag in PROTECTED_TAGS for tag in selected_tags)
 
         if selected_tags and not protected_tag_found:
-            db.delete_current_item_tags(current_item, selected_tags)
+            self.db.delete_current_item_tags(current_item, selected_tags)
             self.set_tags_list()
             self.preview_window.update_item_tags_list(current_item)
         elif protected_tag_found:
-            error_window.show_error_message("Невозможно удалить стандартные теги!")
+            self.error_window.show_error_message("Невозможно удалить стандартные теги!")
         else:
-            error_window.show_error_message("Не выбран ни один тег для удаления!")
+            self.error_window.show_error_message("Не выбран ни один тег для удаления!")
 
 
 # TODO add "select all" and "deselect all" buttons
 class TagsList(QtWidgets.QWidget):
-    def __init__(self, main_window):
+    def __init__(self, main_window, db):
         super().__init__()
 
+        
         self.main_window = main_window
+        self.db = db
 
         # create the main tags layout
         self.tags_layout = QtWidgets.QVBoxLayout(self)
@@ -328,7 +288,7 @@ class TagsList(QtWidgets.QWidget):
     def update_tags_list(self):
         self.tags_widget.clear()
 
-        tags_list = db.get_all_tagnames()
+        tags_list = self.db.get_all_tagnames()
 
         for tag in tags_list:
 
@@ -360,11 +320,13 @@ class TagsList(QtWidgets.QWidget):
 
 
 class PreviewWindow(QtWidgets.QWidget):
-    def __init__(self, main_window, tags_list):
+    def __init__(self, main_window, tags_list, db, error_window):
 
         super().__init__()
 
-        self.tags_settings_window = ItemTagsSettingsWindow(main_window, self, tags_list)
+        self.db = db
+        self.error_window = error_window
+        self.tags_settings_window = ItemTagsSettingsWindow(main_window, self, tags_list, self.db, self.error_window)
         self.main_window = main_window
 
         self.setFixedWidth(300)
@@ -425,7 +387,7 @@ class PreviewWindow(QtWidgets.QWidget):
 
         # update the tags list for the current selected item
         self.update_item_tags_list(filename)
-        self.table_description.setText(db.get_file_description(filename))
+        self.table_description.setText(self.db.get_file_description(filename))
 
         self.table_filename.setText(filename)
         self.table_filepath.setText(filepath)
@@ -434,7 +396,7 @@ class PreviewWindow(QtWidgets.QWidget):
 
     def update_item_tags_list(self, file):
 
-        tags_list = [tag for tag in db.get_current_item_tags(file)]
+        tags_list = [tag for tag in self.db.get_current_item_tags(file)]
         list_unpacked = ", ".join(tags_list)
         self.table_filetags.setText(list_unpacked)
 
@@ -456,10 +418,10 @@ class PreviewWindow(QtWidgets.QWidget):
             )
             if ok:
                 if description.strip():
-                    db.update_file_description(current_item.text(), description)
+                    self.db.update_file_description(current_item.text(), description)
                     self.update_item_description(description)
                 else:
-                    error_window.show_error_message("Укажите описание файла!")
+                    self.error_window.show_error_message("Укажите описание файла!")
         else:
             return
 
@@ -478,25 +440,35 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
+        # create the database object
+        self.db = DatabaseHandler()
+        self.db.connect_to_database()
+
+        # create the error window
+        self.error_window = ErrorWindow()
+
+        # create the progress bar
         self.progress_bar = QProgressBar()
 
-        self.fhandler = FileHandler(db)
+        # create the file handler
+        self.fhandler = FileHandler(self.db)
         self.fhandler.progress.connect(self.on_progress)
         self.fhandler.finished.connect(self.on_finished)
         self.fhandler.thumb_created.connect(self.on_thumb_created)
 
-        self.fscanner = FileScanner(db, self.fhandler)
+        # create the file scanner
+        self.fscanner = FileScanner(self.db, self.fhandler)
 
-
-        self.tags_list = TagsList(self)
-        self.preview_window = PreviewWindow(self, self.tags_list)
-        self.searchbar = SearchBar(self, self.tags_list)
+        # IoC for the dependent classes which use tags list, db and error window 
+        self.tags_list = TagsList(self, self.db)
+        self.preview_window = PreviewWindow(self, self.tags_list, self.db, self.error_window)
+        self.searchbar = SearchBar(self, self.tags_list, self.db)
 
         # create the main folders list window
         self.folder_list_window = FoldersListWindow(self)
 
         # create the tags settings window
-        self.tags_settings_window = TagsSettingsWindow(self.tags_list)
+        self.tags_settings_window = TagsSettingsWindow(self.tags_list, self.db, self.error_window)
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -511,7 +483,7 @@ class MainWindow(QtWidgets.QWidget):
         self.tags_button.setMaximumSize(200, 50)
 
         # create a widget for the files list
-        self.list = FileDragList()
+        self.list = FileDragList(self.db)
         self.list.setViewMode(QListView.IconMode)
         self.list.setIconSize(QSize(128, 128))
         self.list.setResizeMode(QListView.ResizeMode.Adjust)
@@ -568,18 +540,18 @@ class MainWindow(QtWidgets.QWidget):
             difference_found = []
             difference_found = self.fscanner.compare_files_count()
             if "new_files" in difference_found:
-                error_window.show_error_message("Обнаружены новые файлы! Выполняется создание превью")
+                self.error_window.show_error_message("Обнаружены новые файлы! Выполняется создание превью")
             if "deleted_files" in difference_found:
-                error_window.show_error_message("Обнаружены удаленные файлы! Выполняется удаление данных из программы")
+                self.error_window.show_error_message("Обнаружены удаленные файлы! Выполняется удаление данных из программы")
             elif len(difference_found) == 2:
-                error_window.show_error_message("Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов")
+                self.error_window.show_error_message("Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов")
 
     def get_current_item(self):
         current_item = self.list.currentItem()
         if current_item:
             return self.list.currentItem()
         else:
-            error_window.show_error_message("Не выбран ни один файл!")
+            self.error_window.show_error_message("Не выбран ни один файл!")
 
     # tags button click event
     @QtCore.Slot()
@@ -592,7 +564,7 @@ class MainWindow(QtWidgets.QWidget):
     def on_current_item_selected(self):
         preview_icon = self.list.currentItem().icon()
         preview_filename = self.list.currentItem().text()
-        preview_filepath = db.get_filepath(preview_filename)
+        preview_filepath = self.db.get_filepath(preview_filename)
         preview_filepath = preview_filepath
 
         self.preview_window.apply_preview_data(
@@ -627,9 +599,9 @@ class MainWindow(QtWidgets.QWidget):
 
     @QtCore.Slot(str, str, str, list)
     def on_thumb_created(self, filename, filepath, thumb_filepath, tags):
-        db.save_to_database(filename, filepath, thumb_filepath)
-        db.save_current_item_tags(filename, tags)
-        db.save_changes()
+        self.db.save_to_database(filename, filepath, thumb_filepath)
+        self.db.save_current_item_tags(filename, tags)
+        self.db.save_changes()
 
     def on_progress(self, counter, total):
         self.progress_bar.setMaximum(total)
@@ -642,6 +614,7 @@ class MainWindow(QtWidgets.QWidget):
         config.save_to_env("IS_FOLDER_CHOSEN", "True")
         config.save_to_env("FOLDER_PATH", folder)
         
+        # load the .env after updating for file scanner to get the correct folder (in case of first program launch)
         load_dotenv()
         self.fscanner.compare_files_count()
 
@@ -656,11 +629,11 @@ class MainWindow(QtWidgets.QWidget):
         # define the files list source depending on where this method is called from
         match keyword:
             case "program_launch" | "searchbar_canceled":
-                files_list = db.get_all_filenames()
+                files_list = self.db.get_all_filenames()
             case "searchbar_clicked":
                 files_list = files_list_source
             case "folder_tree":
-                files_list = db.get_files_by_filepath(files_list_source)
+                files_list = self.db.get_files_by_filepath(files_list_source)
             case _:
                 files_list = []
 
@@ -668,7 +641,7 @@ class MainWindow(QtWidgets.QWidget):
 
         for file in files_list:
 
-            icon_path = db.get_previewpath_by_filename(file)
+            icon_path = self.db.get_previewpath_by_filename(file)
 
             item = QtWidgets.QListWidgetItem(file)
             item.setIcon(QIcon(str(icon_path)))
@@ -681,11 +654,7 @@ if __name__ == "__main__":
     icon_path = os.path.join(config.assign_script_dir(), "icons", "app_icon.ico")
     app = QtWidgets.QApplication([])
 
-    db = DatabaseHandler()
-    db.connect_to_database()
 
-    
-    error_window = ErrorWindow()
 
     # create the main program window
     main_window = MainWindow()
