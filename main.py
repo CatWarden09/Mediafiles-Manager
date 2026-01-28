@@ -9,13 +9,10 @@ from database import DatabaseHandler
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QListView, QProgressBar
 from PySide6.QtCore import QSize
-from PySide6.QtCore import Qt, QMimeData, QUrl, QThread
-from PySide6.QtGui import QDrag
+from PySide6.QtCore import QThread
 from PySide6.QtGui import QIcon
 
-from ui import FoldersListWindow, SearchBar, FileDragList
-
-from pathlib import Path
+from ui import FoldersListWindow, SearchBar, FileDragList, ErrorWindow
 
 load_dotenv()
 
@@ -23,19 +20,6 @@ debug = False
 
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
 
-class ErrorWindow(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowIcon(QtGui.QIcon(str(icon_path)))
-
-        self.message_box = QtWidgets.QMessageBox(self)
-        self.message_box.setIcon(QtWidgets.QMessageBox.Warning)
-
-    def show_error_message(self, message: str):
-        self.message_box.setWindowTitle("Ошибка")
-        self.message_box.setText(message)
-        self.message_box.exec()
 
 class TagsSettingsWindow(QtWidgets.QWidget):
     # TODO add confirm window when deleting a tag
@@ -46,7 +30,7 @@ class TagsSettingsWindow(QtWidgets.QWidget):
         self.error_window = error_window
         self.main_tags_list = tags_list
 
-        self.setWindowIcon(QtGui.QIcon(str(icon_path)))
+        self.setWindowIcon(QtGui.QIcon(str(config.get_app_icon_path)))
         self.setWindowTitle("Настройки тегов")
         self.resize(600, 400)
 
@@ -180,7 +164,9 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
 
         self.current_tags_tuple = self.db.get_current_item_tags(current_item)
         self.common_tags_tuple = [
-            tag for tag in self.db.get_all_tagnames() if tag not in self.current_tags_tuple
+            tag
+            for tag in self.db.get_all_tagnames()
+            if tag not in self.current_tags_tuple
         ]
 
         self.update_lists(self.current_tags_list, self.current_tags_tuple)
@@ -214,7 +200,9 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         standard_tags_count = sum(tag in PROTECTED_TAGS for tag in all_tags_after_add)
 
         if not selected_tags:
-            self.error_window.show_error_message("Не выбран ни один тег для добавления!")
+            self.error_window.show_error_message(
+                "Не выбран ни один тег для добавления!"
+            )
         elif standard_tags_count > 1:
             self.error_window.show_error_message(
                 "Невозможно добавить более одного стандартного тега!"
@@ -248,7 +236,6 @@ class TagsList(QtWidgets.QWidget):
     def __init__(self, main_window, db):
         super().__init__()
 
-        
         self.main_window = main_window
         self.db = db
 
@@ -304,7 +291,9 @@ class PreviewWindow(QtWidgets.QWidget):
 
         self.db = db
         self.error_window = error_window
-        self.tags_settings_window = ItemTagsSettingsWindow(main_window, self, tags_list, self.db, self.error_window)
+        self.tags_settings_window = ItemTagsSettingsWindow(
+            main_window, self, tags_list, self.db, self.error_window
+        )
         self.main_window = main_window
 
         self.setFixedWidth(300)
@@ -437,16 +426,20 @@ class MainWindow(QtWidgets.QWidget):
         # create the file scanner
         self.fscanner = FileScanner(self.db, self.fhandler)
 
-        # IoC for the dependent classes which use tags list, db and error window 
+        # IoC for the dependent classes which use tags list, db and error window
         self.tags_list = TagsList(self, self.db)
-        self.preview_window = PreviewWindow(self, self.tags_list, self.db, self.error_window)
+        self.preview_window = PreviewWindow(
+            self, self.tags_list, self.db, self.error_window
+        )
         self.searchbar = SearchBar(self, self.tags_list, self.db)
 
         # create the main folders list window
         self.folder_list_window = FoldersListWindow(self)
 
         # create the tags settings window
-        self.tags_settings_window = TagsSettingsWindow(self.tags_list, self.db, self.error_window)
+        self.tags_settings_window = TagsSettingsWindow(
+            self.tags_list, self.db, self.error_window
+        )
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -503,7 +496,6 @@ class MainWindow(QtWidgets.QWidget):
         # connecting to the tags button click
         self.tags_button.clicked.connect(self.on_tags_button_clicked)
 
-
         # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
             folder = os.getenv("FOLDER_PATH")
@@ -518,11 +510,17 @@ class MainWindow(QtWidgets.QWidget):
             difference_found = []
             difference_found = self.fscanner.compare_files_count()
             if "new_files" in difference_found:
-                self.error_window.show_error_message("Обнаружены новые файлы! Выполняется создание превью")
+                self.error_window.show_error_message(
+                    "Обнаружены новые файлы! Выполняется создание превью"
+                )
             if "deleted_files" in difference_found:
-                self.error_window.show_error_message("Обнаружены удаленные файлы! Выполняется удаление данных из программы")
+                self.error_window.show_error_message(
+                    "Обнаружены удаленные файлы! Выполняется удаление данных из программы"
+                )
             elif len(difference_found) == 2:
-                self.error_window.show_error_message("Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов")
+                self.error_window.show_error_message(
+                    "Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов"
+                )
 
     def get_current_item(self):
         current_item = self.list.currentItem()
@@ -591,7 +589,7 @@ class MainWindow(QtWidgets.QWidget):
         self.progress_bar.hide()
         config.save_to_env("IS_FOLDER_CHOSEN", "True")
         config.save_to_env("FOLDER_PATH", folder)
-        
+
         # load the .env after updating for file scanner to get the correct folder (in case of first program launch)
         load_dotenv()
         self.fscanner.compare_files_count()
@@ -603,7 +601,7 @@ class MainWindow(QtWidgets.QWidget):
             self.searchbar.show()
             self.tags_list.update_tags_list()
 
-    def display_files_list(self, files_list_source, keyword:str):
+    def display_files_list(self, files_list_source, keyword: str):
         # define the files list source depending on where this method is called from
         match keyword:
             case "program_launch" | "searchbar_canceled":
@@ -629,15 +627,12 @@ class MainWindow(QtWidgets.QWidget):
 
 if __name__ == "__main__":
 
-    icon_path = os.path.join(config.assign_script_dir(), "icons", "app_icon.ico")
     app = QtWidgets.QApplication([])
-
-
 
     # create the main program window
     main_window = MainWindow()
     main_window.setWindowTitle(str("Media Manager v." + config.VERSION))
-    main_window.setWindowIcon(QtGui.QIcon(str(icon_path)))
+    main_window.setWindowIcon(QtGui.QIcon(str(config.get_app_icon_path)))
     main_window.resize(800, 600)
 
     main_window.show()
