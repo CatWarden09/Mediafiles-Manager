@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt, QMimeData, QUrl, QThread
 from PySide6.QtGui import QDrag
 from PySide6.QtGui import QIcon
 
-from ui import FoldersListWindow, SearchBar
+from ui import FoldersListWindow, SearchBar, FileDragList
 
 from pathlib import Path
 
@@ -22,27 +22,6 @@ load_dotenv()
 debug = False
 
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
-
-class FileDragList(QtWidgets.QListWidget):
-    def __init__(self, db):
-        super().__init__()
-        self.db = db
-
-    def startDrag(self, supportedActions):
-        item = self.currentItem()
-        if not item:
-            return
-
-        file_path = self.db.get_filepath(item.text())
-        if not file_path or not Path(file_path).exists():
-            return
-
-        drag = QDrag(self)
-        mime_data = QMimeData()
-        mime_data.setUrls([QUrl.fromLocalFile(file_path)])
-        drag.setMimeData(mime_data)
-
-        drag.exec(Qt.CopyAction)
 
 class ErrorWindow(QtWidgets.QWidget):
     def __init__(self):
@@ -57,7 +36,6 @@ class ErrorWindow(QtWidgets.QWidget):
         self.message_box.setWindowTitle("Ошибка")
         self.message_box.setText(message)
         self.message_box.exec()
-
 
 class TagsSettingsWindow(QtWidgets.QWidget):
     # TODO add confirm window when deleting a tag
