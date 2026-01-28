@@ -7,11 +7,13 @@ from database import DatabaseHandler
 
 
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtWidgets import QListView, QProgressBar, QTreeWidgetItem
+from PySide6.QtWidgets import QListView, QProgressBar
 from PySide6.QtCore import QSize
 from PySide6.QtCore import Qt, QMimeData, QUrl, QThread
 from PySide6.QtGui import QDrag
 from PySide6.QtGui import QIcon
+
+from ui import FoldersListWindow
 
 from pathlib import Path
 
@@ -20,42 +22,6 @@ load_dotenv()
 debug = False
 
 PROTECTED_TAGS = ["Audio", "Video", "Image"]
-
-
-class FoldersListWindow(QtWidgets.QTreeWidget):
-    def __init__(self, main_window):
-        super().__init__()
-        self.main_window = main_window
-
-        self.setHeaderHidden(True)
-        self.setFixedWidth(200)
-        self.itemClicked.connect(self.on_item_clicked)
-
-    def display_folder_list(self, folder):        
-        self.clear()
-        root_item = self.populate_tree(folder)
-        self.addTopLevelItem(root_item)
-
-    def populate_tree(self, folder):
-        tree_item = QTreeWidgetItem()
-        tree_item.setText(0, os.path.basename(folder))
-
-        icon_path = os.path.join(config.assign_script_dir(), "icons", "folder_icon.png")
-        tree_item.setIcon(0, QIcon(icon_path))
-
-        tree_item.setData(0, Qt.UserRole, folder)
-
-        for dir in os.listdir(folder):
-            dir_path = os.path.join(folder, dir)
-            if os.path.isdir(dir_path) and dir.lower() != "thumbnails":
-                tree_item.addChild(self.populate_tree(dir_path))
-
-        return tree_item
-    
-    def on_item_clicked(self, item):
-        current_path = item.data(0, Qt.UserRole)
-        self.main_window.display_files_list(current_path, "folder_tree")
-
 
 class FileDragList(QtWidgets.QListWidget):
     def startDrag(self, supportedActions):
