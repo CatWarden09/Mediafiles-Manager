@@ -223,8 +223,8 @@ class MainWindow(QtWidgets.QWidget):
         self.thumb_thread.start()
         self.progress_bar.show()
 
-
-
+        # disable the program GUI
+        self.setEnabled(False)
 
     @QtCore.Slot(str, str, str, list)
     def on_thumb_created(self, filename, filepath, thumb_filepath, tags):
@@ -256,6 +256,9 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
+
+        # enable the program GUI
+        self.setEnabled(True)
     
     @QtCore.Slot(set)
     # create a thumbnail creation thread for the new files found on next program launches
