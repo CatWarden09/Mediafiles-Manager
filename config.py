@@ -1,6 +1,8 @@
 import sys, os, json
 
-VERSION = "0.9.7-beta"
+from dotenv import load_dotenv
+
+VERSION = "0.9.8-beta"
 DEBUG = False
 
 
@@ -52,3 +54,12 @@ APP_ICON_PATH = os.path.join(assign_script_dir(), "icons", "app_icon.ico")
 
 def get_app_icon_path():
     return APP_ICON_PATH
+
+
+def get_files_folder_path():
+    load_dotenv()
+    return os.getenv("FOLDER_PATH")
+
+def get_thumb_folder_path():
+    load_dotenv()
+    return os.getenv("THUMB_FOLDER_PATH")
