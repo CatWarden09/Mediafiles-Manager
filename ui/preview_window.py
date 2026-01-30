@@ -1,8 +1,12 @@
-from ui import ItemTagsSettingsWindow # need to import the window here because of the import loop that breaks the program
+from ui import (
+    ItemTagsSettingsWindow,
+)  # need to import the window here because of the import loop that breaks the program
+
 # (if the import would be inside ui>init.py)
 from .file_description_dialog import FileDescriptionDialog
 
 from PySide6 import QtCore, QtWidgets
+
 
 class PreviewWindow(QtWidgets.QWidget):
     def __init__(self, main_window, tags_list, db, error_window):
@@ -11,10 +15,11 @@ class PreviewWindow(QtWidgets.QWidget):
 
         self.db = db
         self.error_window = error_window
-        self.tags_settings_window = ItemTagsSettingsWindow(
-            main_window, self, tags_list, self.db, self.error_window
-        )
         self.main_window = main_window
+
+        self.tags_settings_window = ItemTagsSettingsWindow(
+            self.main_window, self, tags_list, self.db, self.error_window
+        )
 
         self.setFixedWidth(300)
 
@@ -101,15 +106,20 @@ class PreviewWindow(QtWidgets.QWidget):
         current_item = self.main_window.get_current_item()
         if current_item:
             current_item_name = current_item.text()
-            
+
             current_item_description = self.db.get_file_description(current_item_name)
 
             if current_item_name:
-                self.dialog = FileDescriptionDialog(current_item_name, current_item_description, self.db, self.error_window)
+                self.dialog = FileDescriptionDialog(
+                    current_item_name,
+                    current_item_description,
+                    self.db,
+                    self.error_window,
+                )
                 self.dialog.description_updated.connect(self.on_description_updated)
                 self.dialog.exec()
 
     @QtCore.Slot()
     def on_description_updated(self, description):
         self.update_item_description(description)
-        
+
