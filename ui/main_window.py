@@ -135,6 +135,9 @@ class MainWindow(QtWidgets.QWidget):
         # connect to the searchbar clicked signal
         self.searchbar.clicked.connect(self.on_searchbar_clicked)
 
+        # connect to file scanner signal which emits when the new files are found
+        self.fscanner.files_scanned.connect(self.on_files_scanned) 
+
         # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
             folder = os.getenv("FOLDER_PATH")
@@ -146,18 +149,22 @@ class MainWindow(QtWidgets.QWidget):
 
             difference_found = []
             difference_found = self.fscanner.compare_files_count()
+            # need a timer to avoid the case when the info message is shown before the program main window
             if "new_files" in difference_found:
-                self.error_window.show_error_message(
+                QtCore.QTimer.singleShot(200, lambda: self.error_window.show_info_message(
                     "Обнаружены новые файлы! Выполняется создание превью"
-                )
+                ))
+
             if "deleted_files" in difference_found:
-                self.error_window.show_error_message(
+                QtCore.QTimer.singleShot(200, lambda: self.error_window.show_info_message(
                     "Обнаружены удаленные файлы! Выполняется удаление данных из программы"
-                )
+                ))
+
             elif len(difference_found) == 2:
-                self.error_window.show_error_message(
+                QtCore.QTimer.singleShot(200, lambda: self.error_window.show_info_message(
                     "Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов"
-                )
+                ))
+
 
             self.display_files_list(folder, "program_launch")
             self.folder_list_window.display_folder_list(folder)
@@ -225,10 +232,13 @@ class MainWindow(QtWidgets.QWidget):
         self.db.save_current_item_tags(filename, tags)
         self.db.save_changes()
 
+
+    @QtCore.Slot(int,int)
     def on_progress(self, counter, total):
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(counter)
 
+    @QtCore.Slot(str)
     def on_finished(self, folder):
         self.display_files_list(folder, "program_launch")
         # folder here is passed since the display_files_list method signature needs an argument for the file list source, but in this case the folder is never used in the method
@@ -246,6 +256,12 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
+    
+    @QtCore.Slot(set)
+    # create a thumbnail creation thread for the new files found on next program launches
+    def on_files_scanned(self, files_list):
+        self.create_thumbnail_thread(files_list)
+
 
     def display_files_list(self, files_list_source, keyword: str):
         # define the files list source depending on where this method is called from

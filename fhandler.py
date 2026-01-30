@@ -50,8 +50,13 @@ ALLOWED_AUDIO_FORMATS = [
 ALLOWED_TYPES = ALLOWED_IMAGE_FORMATS + ALLOWED_VIDEO_FORMATS + ALLOWED_AUDIO_FORMATS
 
 
-class FileScanner:
+class FileScanner(QObject):
+    # need to use signal in order for thumbnail creation work in a separate thread like in the main flow (first program launch)
+    files_scanned = Signal(set)
+
     def __init__(self, db, fhandler):
+        super().__init__()
+
         self.db = db
         self.fhandler = fhandler
 
@@ -126,11 +131,12 @@ class FileScanner:
 
         return difference_found
 
-    # if the actual files counter != the one saved in the .env, generate previews for the new files and update files list in the UI
+    # if the actual files counter > than the one saved in the .env, generate previews for the new files and update files list in the UI
     def update_files_list(self, new_files_paths):
         files_list = self.fhandler.clear_files_list(new_files_paths)
         if files_list:
-            self.fhandler.create_thumbnails(files_list)
+            self.files_scanned.emit(new_files_paths)
+    
 
 
 # TODO add a check if the thumbnails folder already exists and skip these methods
