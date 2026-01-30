@@ -98,13 +98,16 @@ class PreviewWindow(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_item_description_button_clicked(self):
-        current_item = self.main_window.get_current_item().text()
-        current_item_description = self.db.get_file_description(current_item)
-
+        current_item = self.main_window.get_current_item()
         if current_item:
-            self.dialog = FileDescriptionDialog(current_item, current_item_description, self.db, self.error_window)
-            self.dialog.description_updated.connect(self.on_description_updated)
-            self.dialog.exec()
+            current_item_name = current_item.text()
+            
+            current_item_description = self.db.get_file_description(current_item_name)
+
+            if current_item_name:
+                self.dialog = FileDescriptionDialog(current_item_name, current_item_description, self.db, self.error_window)
+                self.dialog.description_updated.connect(self.on_description_updated)
+                self.dialog.exec()
 
     @QtCore.Slot()
     def on_description_updated(self, description):

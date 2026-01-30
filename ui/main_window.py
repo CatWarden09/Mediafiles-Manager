@@ -26,13 +26,17 @@ load_dotenv()
 
 
 class ThumbCreationThread(QThread):
-    def __init__(self, fhandler, folder):
+    def __init__(self, fhandler, filepaths):
         super().__init__()
+        
         self.fhandler = fhandler
-        self.folder = folder
+        self.filepaths = filepaths
+
+        self.folder = config.get_files_folder_path()
+        self.thumb_folder = config.get_thumb_folder_path()
 
     def run(self):
-        self.fhandler.clear_files_list(self.folder)
+        self.fhandler.create_thumbnails(self.filepaths)
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -139,8 +143,6 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
-            self.display_files_list(folder, "program_launch")
-            self.folder_list_window.display_folder_list(folder)
 
             difference_found = []
             difference_found = self.fscanner.compare_files_count()
@@ -156,6 +158,9 @@ class MainWindow(QtWidgets.QWidget):
                 self.error_window.show_error_message(
                     "Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов"
                 )
+
+            self.display_files_list(folder, "program_launch")
+            self.folder_list_window.display_folder_list(folder)
 
     def get_current_item(self):
         current_item = self.list.currentItem()
@@ -185,29 +190,34 @@ class MainWindow(QtWidgets.QWidget):
     # choose folder button click event
     @QtCore.Slot()
     def on_choose_folder_button_clicked(self):
-
-        filepaths_list = []
-
-        files_dlg = QtWidgets.QFileDialog()
-        folder = files_dlg.getExistingDirectory()
+        files_dialog = QtWidgets.QFileDialog()
+        folder = files_dialog.getExistingDirectory()
         folder = os.path.abspath(os.path.normpath(folder))
-
-        # create the separate thread for thumbnail creation
-        self.thumb_thread = ThumbCreationThread(self.fhandler, folder)
+        
         if folder:
+            thumbs_dialog = QtWidgets.QFileDialog()
+            thumb_folder = thumbs_dialog.getExistingDirectory()
+            thumb_folder = os.path.abspath(os.path.normpath(thumb_folder))
 
-            filepaths_list = self.thumb_thread.start()
-            self.progress_bar.show()
+            
+            if thumb_folder:
+                files_list = self.fhandler.clear_files_list(folder)
+                if files_list:
+                    config.save_to_env("IS_FOLDER_CHOSEN", "True")
+                    config.save_to_env("FOLDER_PATH", folder)
+                    config.save_to_env("THUMB_FOLDER_PATH", thumb_folder)
+                    self.create_thumbnail_thread(files_list)
+                else:
+                    self.error_window.show_error_message("Выбранная папка пуста или не содержит файлы поддерживаемых форматов.")
 
-            if filepaths_list == []:
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "Ошибка!",
-                    "Выбранная папка пуста или не содержит файлы поддерживаемых форматов.",
-                )
+    # create the separate thread for thumbnail creation
+    def create_thumbnail_thread(self, files_list):
+        self.thumb_thread = ThumbCreationThread(self.fhandler, files_list)
+        self.thumb_thread.start()
+        self.progress_bar.show()
 
-                # hide add folder button and show tags button and window
-                # if not debug:
+
+
 
     @QtCore.Slot(str, str, str, list)
     def on_thumb_created(self, filename, filepath, thumb_filepath, tags):
@@ -221,10 +231,10 @@ class MainWindow(QtWidgets.QWidget):
 
     def on_finished(self, folder):
         self.display_files_list(folder, "program_launch")
+        # folder here is passed since the display_files_list method signature needs an argument for the file list source, but in this case the folder is never used in the method
         self.folder_list_window.display_folder_list(folder)
         self.progress_bar.hide()
-        config.save_to_env("IS_FOLDER_CHOSEN", "True")
-        config.save_to_env("FOLDER_PATH", folder)
+
 
         # load the .env after updating for file scanner to get the correct folder (in case of first program launch)
         load_dotenv()
