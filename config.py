@@ -2,7 +2,7 @@ import sys, os, json
 
 from dotenv import load_dotenv
 
-VERSION = "0.9.8-beta"
+VERSION = "0.9.9-beta"
 DEBUG = False
 
 
@@ -59,6 +59,7 @@ def get_app_icon_path():
 def get_files_folder_path():
     load_dotenv()
     return os.getenv("FOLDER_PATH")
+
 
 def get_thumb_folder_path():
     load_dotenv()
