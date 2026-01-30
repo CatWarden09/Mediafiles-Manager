@@ -1,4 +1,6 @@
-from ui import ItemTagsSettingsWindow
+from ui import ItemTagsSettingsWindow # need to import the window here because of the import loop that breaks the program
+# (if the import would be inside ui>init.py)
+from .file_description_dialog import FileDescriptionDialog
 
 from PySide6 import QtCore, QtWidgets
 
@@ -96,16 +98,15 @@ class PreviewWindow(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_item_description_button_clicked(self):
-        current_item = self.main_window.get_current_item()
+        current_item = self.main_window.get_current_item().text()
+        current_item_description = self.db.get_file_description(current_item)
+
         if current_item:
-            description, ok = QtWidgets.QInputDialog.getText(
-                self, "Изменить описание", "Введите новое описание файла"
-            )
-            if ok:
-                if description.strip():
-                    self.db.update_file_description(current_item.text(), description)
-                    self.update_item_description(description)
-                else:
-                    self.error_window.show_error_message("Укажите описание файла!")
-        else:
-            return
+            self.dialog = FileDescriptionDialog(current_item, current_item_description, self.db, self.error_window)
+            self.dialog.description_updated.connect(self.on_description_updated)
+            self.dialog.exec()
+
+    @QtCore.Slot()
+    def on_description_updated(self, description):
+        self.update_item_description(description)
+        

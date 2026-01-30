@@ -1,6 +1,6 @@
 import sys, os, json
 
-VERSION = "0.9.4-beta"
+VERSION = "0.9.7-beta"
 DEBUG = False
 
 
@@ -26,13 +26,16 @@ def save_to_env(key, value):
     with open(env_path, "a", encoding="utf-8") as f:
         f.write(f"\n{key}={value}")
 
+
 counter_path = os.path.join(assign_script_dir(), "fhandler_data", "counter.json")
+
 
 def save_files_count(value: int):
     os.makedirs(os.path.dirname(counter_path), exist_ok=True)
 
     with open(counter_path, "w", encoding="utf-8") as f:
         json.dump({"FILES_COUNT": value}, f)
+
 
 def get_files_count():
     if not os.path.exists(counter_path):
@@ -43,7 +46,9 @@ def get_files_count():
 
     return data.get("FILES_COUNT")
 
+
 APP_ICON_PATH = os.path.join(assign_script_dir(), "icons", "app_icon.ico")
+
 
 def get_app_icon_path():
     return APP_ICON_PATH
