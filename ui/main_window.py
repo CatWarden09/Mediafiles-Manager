@@ -180,7 +180,7 @@ class MainWindow(QtWidgets.QWidget):
         preview_filename = self.list.currentItem().text()
         preview_filepath = self.db.get_filepath_by_id(file_id)
 
-        self.preview_window.apply_preview_data(
+        self.preview_window.apply_preview_data(file_id,
             preview_icon, preview_filename, preview_filepath
         )
 
@@ -219,7 +219,7 @@ class MainWindow(QtWidgets.QWidget):
     @QtCore.Slot(str, str, str, list)
     def on_thumb_created(self, filename, filepath, thumb_filepath, tags):
         self.db.save_to_database(filename, filepath, thumb_filepath)
-        self.db.save_current_item_tags(filename, tags)
+        self.db.save_current_item_tags(filepath, tags)
         self.db.save_changes()
 
 

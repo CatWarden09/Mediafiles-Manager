@@ -169,6 +169,8 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
         current_item = self.main_window.get_current_item().text()
         selected_tags_list = self.common_tags_list.selectedItems()
 
+        current_item_filepath = self.db.get_filepath(current_item)
+
         # protection from adding more than 1 standard tag (Audio, Video, Image)
         assigned_tags = [
             self.current_tags_list.item(i).text()
@@ -190,7 +192,7 @@ class ItemTagsSettingsWindow(TagsSettingsWindow):
                 "Невозможно добавить более одного стандартного тега!"
             )
         else:
-            self.db.save_current_item_tags(current_item, selected_tags)
+            self.db.save_current_item_tags(current_item_filepath, selected_tags)
             self.set_tags_list()
             self.preview_window.update_item_tags_list(current_item)
 
