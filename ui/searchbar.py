@@ -49,17 +49,17 @@ class SearchBar(QtWidgets.QWidget):
 
         if tags and query.strip():
 
-            files_by_tags = self.db.get_files_by_tags(tags)
-            files_by_description = self.db.get_files_by_text(query)
-            all_files = [file for file in files_by_tags if file in files_by_description]
+            ids_by_tags = self.db.get_ids_by_tags(tags)
+            ids_by_description = self.db.get_ids_by_text(query)
+            all_ids = [file for file in ids_by_tags if file in ids_by_description]
         elif tags:
-            all_files = self.db.get_files_by_tags(tags)
+            all_ids = self.db.get_ids_by_tags(tags)
         elif query.strip():
-            all_files = self.db.get_files_by_text(query)
+            all_ids = self.db.get_ids_by_text(query)
         else:
-            all_files = self.db.get_all_filenames()
+            all_ids = self.db.get_all_files_ids()
 
-        self.main_window.display_files_list(all_files, "searchbar_clicked")
+        self.main_window.display_files_list(all_ids, "searchbar_clicked")
 
         self.clicked.emit()
 
