@@ -136,6 +136,18 @@ class DatabaseHandler:
         self.cursor.execute("SELECT previewpath FROM Files WHERE filepath = ?", (filepath,))
         row = self.cursor.fetchone()
         return row[0]
+    
+    def get_previewpaths_by_filepaths(self, filepaths):
+        placeholders = ", ".join(["?"] * len(filepaths))
+
+        query = f"SELECT previewpath FROM Files WHERE filepath IN ({placeholders})"
+
+        self.cursor.execute(query, tuple(filepaths))
+
+        rows = self.cursor.fetchall()
+
+        return [row[0] for row in rows]
+        
 
     def get_all_filenames(self):
         self.cursor.execute("SELECT filename FROM Files")
@@ -215,6 +227,15 @@ class DatabaseHandler:
 
     def delete_file_by_filepath(self, filepath):
         self.cursor.execute("DELETE FROM Files WHERE filepath = ?", (filepath,))
+
+    def delete_files_by_filepaths(self, filepaths):
+        placeholders = ", ".join(["?"] * len(filepaths))
+
+        query = f"DELETE FROM Files WHERE filepath IN ({placeholders})"
+
+        self.cursor.execute(query, tuple(filepaths))
+
+        self.save_changes()
 
     def get_all_files_ids(self):
         self.cursor.execute("SELECT id FROM Files")

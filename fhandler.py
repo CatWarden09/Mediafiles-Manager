@@ -5,6 +5,7 @@ import ffmpeg
 import config
 
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QThread
 
 from functools import singledispatchmethod
 
@@ -95,7 +96,6 @@ class FileScanner(QObject):
 
     def get_files_difference(self):
         root_folder = os.getenv("FOLDER_PATH")
-        
 
         db_files = set(self.db.get_all_filepaths())
         current_files = set()
@@ -120,12 +120,12 @@ class FileScanner(QObject):
         if new_files_paths:
             self.update_files_list(new_files_paths)
             difference_found.append("new_files")
-        if deleted_files_paths:
-            print("Deleted files paths are", deleted_files_paths)
 
-            for path in deleted_files_paths:
-                self.db.delete_file_by_filepath(path)
-            self.db.save_changes()
+        if deleted_files_paths:
+            thumbnail_paths = self.db.get_previewpaths_by_filepaths(deleted_files_paths)
+            self.fhandler.create_thumbnail_deletion_thread(thumbnail_paths)
+
+            self.db.delete_files_by_filepaths(deleted_files_paths)
 
             difference_found.append("deleted_files")
 
@@ -136,7 +136,6 @@ class FileScanner(QObject):
         files_list = self.fhandler.clear_files_list(new_files_paths)
         if files_list:
             self.files_scanned.emit(new_files_paths)
-    
 
 
 # TODO add a check if the thumbnails folder already exists and skip these methods
@@ -159,7 +158,7 @@ class FileHandler(QObject):
     @singledispatchmethod
     def clear_files_list(self, files_source):
         raise TypeError("Некорректный список файлов")
-    
+
     # separate cases - №1 for folder (first program launch)
     @clear_files_list.register(str)
     def _(self, folder: str):
@@ -182,7 +181,7 @@ class FileHandler(QObject):
                     )
 
         return filtered_filepaths
-    
+
     # separate cases - №2 for specific files lists (on new program launches, when new files are detected)
     @clear_files_list.register(set)
     def _(self, files_list: set):
@@ -193,8 +192,6 @@ class FileHandler(QObject):
                 filtered_filepaths.append(self.normalize_filepath(file))
 
         return filtered_filepaths
-    
-
 
     def create_thumbnails(self, filepaths):
 
@@ -257,3 +254,44 @@ class FileHandler(QObject):
             self.thumb_created.emit(filename, filepath, thumb_filepath, tags)
 
         self.finished.emit(folder)
+
+    def create_thumbnail_creation_thread(self, files_list):
+        self.thumb_thread = ThumbCreationThread(self, files_list)
+        self.thumb_thread.start()
+
+    def create_thumbnail_deletion_thread(self, thumbnail_paths):
+
+        self.thumb_deletion_thread = ThumbDeletionThread(self, thumbnail_paths)
+        self.thumb_deletion_thread.start()
+
+    def delete_files_thumbnails(self, thumb_paths):
+        for thumb_path in thumb_paths:
+            try:
+                os.remove(thumb_path)
+            except FileNotFoundError:
+                pass
+
+
+class ThumbCreationThread(QThread):
+    def __init__(self, fhandler, filepaths):
+        super().__init__()
+
+        self.fhandler = fhandler
+        self.filepaths = filepaths
+
+        self.folder = config.get_files_folder_path()
+        self.thumb_folder = config.get_thumb_folder_path()
+
+    def run(self):
+        self.fhandler.create_thumbnails(self.filepaths)
+
+
+class ThumbDeletionThread(QThread):
+    def __init__(self, fhandler, filepaths):
+        super().__init__()
+
+        self.fhandler = fhandler
+        self.filepaths = filepaths
+
+    def run(self):
+        self.fhandler.delete_files_thumbnails(self.filepaths)

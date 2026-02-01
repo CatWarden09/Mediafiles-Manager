@@ -9,7 +9,6 @@ from database import DatabaseHandler
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import QListView, QProgressBar
 from PySide6.QtCore import QSize
-from PySide6.QtCore import QThread
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
 
@@ -26,18 +25,6 @@ from ui import (
 load_dotenv()
 
 
-class ThumbCreationThread(QThread):
-    def __init__(self, fhandler, filepaths):
-        super().__init__()
-        
-        self.fhandler = fhandler
-        self.filepaths = filepaths
-
-        self.folder = config.get_files_folder_path()
-        self.thumb_folder = config.get_thumb_folder_path()
-
-    def run(self):
-        self.fhandler.create_thumbnails(self.filepaths)
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -216,14 +203,14 @@ class MainWindow(QtWidgets.QWidget):
                     config.save_to_env("IS_FOLDER_CHOSEN", "True")
                     config.save_to_env("FOLDER_PATH", folder)
                     config.save_to_env("THUMB_FOLDER_PATH", thumb_folder)
-                    self.create_thumbnail_thread(files_list)
+                    self.create_thumbnail_creation_thread(files_list)
                 else:
                     self.error_window.show_error_message("Выбранная папка пуста или не содержит файлы поддерживаемых форматов.")
 
     # create the separate thread for thumbnail creation
-    def create_thumbnail_thread(self, files_list):
-        self.thumb_thread = ThumbCreationThread(self.fhandler, files_list)
-        self.thumb_thread.start()
+    def create_thumbnail_creation_thread(self, files_list):
+        self.fhandler.create_thumbnail_creation_thread(files_list)
+
         self.progress_bar.show()
 
         # disable the program GUI
@@ -266,7 +253,7 @@ class MainWindow(QtWidgets.QWidget):
     @QtCore.Slot(set)
     # create a thumbnail creation thread for the new files found on next program launches
     def on_files_scanned(self, files_list):
-        self.create_thumbnail_thread(files_list)
+        self.create_thumbnail_creation_thread(files_list)
 
     # DONE add file id assigning through Qt setData (to avoid errors when there are files with the same names in different folders)
     def display_files_list(self, files_list_source, keyword: str):
