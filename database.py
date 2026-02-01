@@ -92,7 +92,7 @@ class DatabaseHandler:
     # 2. Join Files_tags to find tag-file links
     # 3. Join Files to know which file each tag belongs to
     # 4. Filter by file name
-    def get_current_item_tags(self, item):
+    def get_current_item_tags(self, item_id):
         self.cursor.execute(
             """
             SELECT t.tagname
@@ -100,25 +100,25 @@ class DatabaseHandler:
             
             JOIN Files_tags ft on ft.tag_id = t.id
             JOIN Files f ON ft.file_id = f.id
-            WHERE f.filename = ?
+            WHERE f.id = ?
 
         """,
-            (item,),
+            (item_id,),
         )
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
 
-    def save_current_item_tags(self, item, tags_list):
+    def save_current_item_tags(self, filepath, tags_list):
         for tag in tags_list:
             self.cursor.execute(
                 """INSERT OR IGNORE INTO Files_tags (file_id, tag_id)
                 SELECT f.id, t.id
                 FROM Files f
                 JOIN Tags t ON t.tagname = ?
-                WHERE f.filename = ?
+                WHERE f.filepath = ?
                 
                 """,
-                (tag, item),
+                (tag, filepath),
             )
         self.save_changes()
 

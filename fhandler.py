@@ -3,6 +3,7 @@ from PIL import Image
 
 import ffmpeg
 import config
+import hashlib
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtCore import QThread
@@ -197,6 +198,7 @@ class FileHandler(QObject):
 
         folder = config.get_files_folder_path()
         thumb_folder = config.get_thumb_folder_path()
+        
 
         progress_counter = 0
         tags = []
@@ -210,6 +212,11 @@ class FileHandler(QObject):
         )
 
         for filepath in filepaths:
+            tags = []
+            # encode the filepath to utf-8, then get the hash object and then transfer it to a string representation
+            # need to use unique name 
+            hash_name = hashlib.md5(filepath.encode('utf-8')).hexdigest()
+            thumb_name = hash_name + ".png"
 
             filename = os.path.basename(filepath)
             file_format = os.path.splitext(filename)[1].lower()
@@ -219,7 +226,7 @@ class FileHandler(QObject):
                 with Image.open(filepath) as img:
                     img.thumbnail(img_thumb_size)
                     thumb_filepath = os.path.join(
-                        save_path, os.path.splitext(filename)[0] + ".png"
+                        save_path, thumb_name
                     )
                     img.save(thumb_filepath)
                 tags = ["Image"]
@@ -232,7 +239,7 @@ class FileHandler(QObject):
                     )
                     .filter("scale", 512, -1)
                     .output(
-                        os.path.join(save_path, os.path.splitext(filename)[0] + ".png"),
+                        os.path.join(save_path, thumb_name),
                         vframes=1,
                         n=None,
                         loglevel="quiet",
@@ -240,7 +247,7 @@ class FileHandler(QObject):
                     .run(cmd=config.get_ffmpeg_path())
                 )
                 thumb_filepath = os.path.join(
-                    save_path, os.path.splitext(filename)[0] + ".png"
+                    save_path, thumb_name
                 )
 
                 tags = ["Video"]

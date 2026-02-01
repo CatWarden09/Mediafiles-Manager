@@ -73,12 +73,12 @@ class PreviewWindow(QtWidgets.QWidget):
             self.on_item_description_button_clicked
         )
 
-    def apply_preview_data(self, icon, filename, filepath):
+    def apply_preview_data(self, file_id, icon, filename, filepath):
 
         pixmap = icon.pixmap(256, 256)
 
         # update the tags list for the current selected item
-        self.update_item_tags_list(filename)
+        self.update_item_tags_list(file_id)
         self.table_description.setText(self.db.get_file_description(filename))
 
         self.table_filename.setText(filename)
@@ -86,9 +86,8 @@ class PreviewWindow(QtWidgets.QWidget):
 
         self.image_preview.setPixmap(pixmap)
 
-    def update_item_tags_list(self, file):
-
-        tags_list = [tag for tag in self.db.get_current_item_tags(file)]
+    def update_item_tags_list(self, file_id):
+        tags_list = [tag for tag in self.db.get_current_item_tags(file_id)]
         list_unpacked = ", ".join(tags_list)
         self.table_filetags.setText(list_unpacked)
 
