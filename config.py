@@ -2,7 +2,7 @@ import sys, os, json
 
 from dotenv import load_dotenv
 
-VERSION = "0.9.9-beta"
+VERSION = "0.9.10-beta"
 DEBUG = False
 
 

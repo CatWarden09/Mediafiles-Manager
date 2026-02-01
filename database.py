@@ -215,3 +215,60 @@ class DatabaseHandler:
 
     def delete_file_by_filepath(self, filepath):
         self.cursor.execute("DELETE FROM Files WHERE filepath = ?", (filepath,))
+
+    def get_all_files_ids(self):
+        self.cursor.execute("SELECT id FROM Files")
+        rows = self.cursor.fetchall()
+        return [row[0] for row in rows]
+    
+    def get_filepath_by_id(self, id):
+        self.cursor.execute("SELECT filepath FROM Files WHERE id = ?", (id,))
+        row = self.cursor.fetchone()
+
+        return row[0]
+    
+    def get_previewpath_by_id(self, id):
+        self.cursor.execute("SELECT previewpath FROM Files WHERE id = ?", (id,))
+        row = self.cursor.fetchone()
+        return row[0]
+    
+    def get_filename_by_id(self, id):
+        self.cursor.execute("SELECT filename FROM Files WHERE id = ?", (id,))
+        row = self.cursor.fetchone()
+        return row[0]
+    
+    def get_ids_by_tags(self, tags_list):
+        if not tags_list:
+            return []
+        placeholders = ", ".join(["?"] * len(tags_list))
+        query = f"""
+            SELECT f.id
+            FROM Files f
+            JOIN Files_tags ft on ft.file_id = f.id
+            JOIN Tags t ON ft.tag_id = t.id
+            WHERE t.tagname IN ({placeholders})
+            GROUP BY f.id
+            HAVING COUNT(DISTINCT t.tagname) = ?
+        """
+        params = tags_list + [len(tags_list)]
+        self.cursor.execute(query, params)
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
+    
+    def get_ids_by_text(self, description):
+        query = "SELECT id FROM Files WHERE description LIKE ? OR filename LIKE ?"
+        self.cursor.execute(query, (f"%{description}%", f"%{description}%"))
+        rows = self.cursor.fetchall()
+        return [r[0] for r in rows]
+    
+    def get_ids_by_filepath(self, filepath):
+        self.cursor.execute(
+            "SELECT id, filepath FROM Files WHERE filepath LIKE ?",
+            (filepath + '%',)
+        )
+        rows = self.cursor.fetchall()
+        files_in_folder = [
+            id for id, fullpath in rows
+            if os.path.dirname(fullpath) == filepath.rstrip(os.sep)
+        ]
+        return files_in_folder

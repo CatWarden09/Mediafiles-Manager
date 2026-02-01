@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QListView, QProgressBar
 from PySide6.QtCore import QSize
 from PySide6.QtCore import QThread
 from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt
 
 from ui import (
     FoldersListWindow,
@@ -185,10 +186,12 @@ class MainWindow(QtWidgets.QWidget):
     # item click event
     @QtCore.Slot()
     def on_current_item_selected(self):
+        # get the saved file id from the list item
+        file_id = self.list.currentItem().data(Qt.UserRole)
+
         preview_icon = self.list.currentItem().icon()
         preview_filename = self.list.currentItem().text()
-        preview_filepath = self.db.get_filepath(preview_filename)
-        preview_filepath = preview_filepath
+        preview_filepath = self.db.get_filepath_by_id(file_id)
 
         self.preview_window.apply_preview_data(
             preview_icon, preview_filename, preview_filepath
@@ -265,30 +268,37 @@ class MainWindow(QtWidgets.QWidget):
     def on_files_scanned(self, files_list):
         self.create_thumbnail_thread(files_list)
 
-
+    # DONE add file id assigning through Qt setData (to avoid errors when there are files with the same names in different folders)
     def display_files_list(self, files_list_source, keyword: str):
         # define the files list source depending on where this method is called from
         match keyword:
             case "program_launch" | "searchbar_canceled":
-                files_list = self.db.get_all_filenames()
+                id_list = self.db.get_all_files_ids()
             case "searchbar_clicked":
-                files_list = files_list_source
+                # the method from Searchbar passes an id list (either by tags, by descriptions or both)
+                id_list = files_list_source
             case "folder_tree":
-                files_list = self.db.get_files_by_filepath(files_list_source)
+                # the method from folder tree passes the selected folder (full path)
+                id_list = self.db.get_ids_by_filepath(files_list_source)
             case _:
-                files_list = []
+                id_list = []
 
         self.list.clear()
 
-        for file in files_list:
+        for file_id in id_list:
+            icon_path = self.db.get_previewpath_by_id(file_id)
+            filename = self.db.get_filename_by_id(file_id)
 
-            icon_path = self.db.get_previewpath_by_filename(file)
 
-            item = QtWidgets.QListWidgetItem(file)
+            item = QtWidgets.QListWidgetItem(filename)
             item.setIcon(QIcon(str(icon_path)))
+
+            # assign the file id to the list item for using by other components (like the preview window)
+            item.setData(Qt.UserRole, file_id)
 
             self.list.addItem(item)
 
     # clear the folder list selection when the searchbar actions are made
+    @QtCore.Slot()
     def on_searchbar_clicked(self):
         self.folder_list_window.clear_selection()
