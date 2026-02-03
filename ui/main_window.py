@@ -25,8 +25,6 @@ from ui import (
 load_dotenv()
 
 
-
-
 class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -124,7 +122,7 @@ class MainWindow(QtWidgets.QWidget):
         self.searchbar.clicked.connect(self.on_searchbar_clicked)
 
         # connect to file scanner signal which emits when the new files are found
-        self.fscanner.files_scanned.connect(self.on_files_scanned) 
+        self.fscanner.files_scanned.connect(self.on_files_scanned)
 
         # if the folder is already chosen on program launch, hide the folder and show the tags button and window
         if self.is_folder_chosen:
@@ -139,20 +137,28 @@ class MainWindow(QtWidgets.QWidget):
             difference_found = self.fscanner.compare_files_count()
             # need a timer to avoid the case when the info message is shown before the program main window
             if "new_files" in difference_found:
-                QtCore.QTimer.singleShot(200, lambda: self.error_window.show_info_message(
-                    "Обнаружены новые файлы! Выполняется создание превью"
-                ))
+                QtCore.QTimer.singleShot(
+                    200,
+                    lambda: self.error_window.show_info_message(
+                        "Обнаружены новые файлы! Выполняется создание превью"
+                    ),
+                )
 
             if "deleted_files" in difference_found:
-                QtCore.QTimer.singleShot(200, lambda: self.error_window.show_info_message(
-                    "Обнаружены удаленные файлы! Выполняется удаление данных из программы"
-                ))
+                QtCore.QTimer.singleShot(
+                    200,
+                    lambda: self.error_window.show_info_message(
+                        "Обнаружены удаленные файлы! Выполняется удаление данных из программы"
+                    ),
+                )
 
             elif len(difference_found) == 2:
-                QtCore.QTimer.singleShot(200, lambda: self.error_window.show_info_message(
-                    "Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов"
-                ))
-
+                QtCore.QTimer.singleShot(
+                    200,
+                    lambda: self.error_window.show_info_message(
+                        "Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов"
+                    ),
+                )
 
             self.display_files_list(folder, "program_launch")
             self.folder_list_window.display_folder_list(folder)
@@ -180,32 +186,40 @@ class MainWindow(QtWidgets.QWidget):
         preview_filename = self.list.currentItem().text()
         preview_filepath = self.db.get_filepath_by_id(file_id)
 
-        self.preview_window.apply_preview_data(file_id,
-            preview_icon, preview_filename, preview_filepath
+        self.preview_window.apply_preview_data(
+            file_id, preview_icon, preview_filename, preview_filepath
         )
 
     # choose folder button click event
     @QtCore.Slot()
     def on_choose_folder_button_clicked(self):
-        files_dialog = QtWidgets.QFileDialog()
-        folder = files_dialog.getExistingDirectory()
-        folder = os.path.abspath(os.path.normpath(folder))
-        
-        if folder:
-            thumbs_dialog = QtWidgets.QFileDialog()
-            thumb_folder = thumbs_dialog.getExistingDirectory()
-            thumb_folder = os.path.abspath(os.path.normpath(thumb_folder))
 
-            
-            if thumb_folder:
-                files_list = self.fhandler.clear_files_list(folder)
-                if files_list:
-                    config.save_to_env("IS_FOLDER_CHOSEN", "True")
-                    config.save_to_env("FOLDER_PATH", folder)
-                    config.save_to_env("THUMB_FOLDER_PATH", thumb_folder)
-                    self.create_thumbnail_creation_thread(files_list)
-                else:
-                    self.error_window.show_error_message("Выбранная папка пуста или не содержит файлы поддерживаемых форматов.")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Выберите папку с репозиторием"
+        )
+        if not folder:
+            return
+
+        folder = os.path.abspath(os.path.normpath(folder))
+
+        thumb_folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Выберите папку для превью файлов"
+        )
+        if not thumb_folder:
+            return
+
+        thumb_folder = os.path.abspath(os.path.normpath(thumb_folder))
+
+        files_list = self.fhandler.clear_files_list(folder)
+        if files_list:
+            config.save_to_env("IS_FOLDER_CHOSEN", "True")
+            config.save_to_env("FOLDER_PATH", folder)
+            config.save_to_env("THUMB_FOLDER_PATH", thumb_folder)
+            self.create_thumbnail_creation_thread(files_list)
+        else:
+            self.error_window.show_error_message(
+                "Выбранная папка пуста или не содержит файлы поддерживаемых форматов."
+            )
 
     # create the separate thread for thumbnail creation
     def create_thumbnail_creation_thread(self, files_list):
@@ -222,8 +236,7 @@ class MainWindow(QtWidgets.QWidget):
         self.db.save_current_item_tags(filepath, tags)
         self.db.save_changes()
 
-
-    @QtCore.Slot(int,int)
+    @QtCore.Slot(int, int)
     def on_progress(self, counter, total):
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(counter)
@@ -234,7 +247,6 @@ class MainWindow(QtWidgets.QWidget):
         # folder here is passed since the display_files_list method signature needs an argument for the file list source, but in this case the folder is never used in the method
         self.folder_list_window.display_folder_list(folder)
         self.progress_bar.hide()
-
 
         # load the .env after updating for file scanner to get the correct folder (in case of first program launch)
         load_dotenv()
@@ -249,7 +261,7 @@ class MainWindow(QtWidgets.QWidget):
 
         # enable the program GUI
         self.setEnabled(True)
-    
+
     @QtCore.Slot(set)
     # create a thumbnail creation thread for the new files found on next program launches
     def on_files_scanned(self, files_list):
@@ -275,7 +287,6 @@ class MainWindow(QtWidgets.QWidget):
         for file_id in id_list:
             icon_path = self.db.get_previewpath_by_id(file_id)
             filename = self.db.get_filename_by_id(file_id)
-
 
             item = QtWidgets.QListWidgetItem(filename)
             item.setIcon(QIcon(str(icon_path)))
