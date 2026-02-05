@@ -133,33 +133,8 @@ class MainWindow(QtWidgets.QWidget):
             self.searchbar.show()
             self.tags_list.update_tags_list()
 
-            difference_found = []
-            difference_found = self.fscanner.compare_files_count()
-            # need a timer to avoid the case when the info message is shown before the program main window
-            if "new_files" in difference_found:
-                QtCore.QTimer.singleShot(
-                    200,
-                    lambda: self.error_window.show_info_message(
-                        "Обнаружены новые файлы! Выполняется создание превью"
-                    ),
-                )
-
-            if "deleted_files" in difference_found:
-                QtCore.QTimer.singleShot(
-                    200,
-                    lambda: self.error_window.show_info_message(
-                        "Обнаружены удаленные файлы! Выполняется удаление данных из программы"
-                    ),
-                )
-
-            elif len(difference_found) == 2:
-                QtCore.QTimer.singleShot(
-                    200,
-                    lambda: self.error_window.show_info_message(
-                        "Обнаружена разница в количестве файлов. Выполняется удаление старых и создание превью для новых файлов"
-                    ),
-                )
-
+            self.fscanner.scan_files()
+            
             self.display_files_list(folder, "program_launch")
             self.folder_list_window.display_folder_list(folder)
 
@@ -248,9 +223,6 @@ class MainWindow(QtWidgets.QWidget):
         self.folder_list_window.display_folder_list(folder)
         self.progress_bar.hide()
 
-        # load the .env after updating for file scanner to get the correct folder (in case of first program launch)
-        load_dotenv()
-        self.fscanner.compare_files_count()
 
         if not config.DEBUG:
             self.button.hide()

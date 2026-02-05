@@ -62,43 +62,12 @@ class FileScanner(QObject):
         self.db = db
         self.fhandler = fhandler
 
-    def count_all_files(self):
-        folder = os.getenv("FOLDER_PATH")
-
-        counter = 0
-
-        for _, subfolders, files in os.walk(folder):
-            # create the new subfolders list for the os.walk without the thumbnails folder
-            subfolders[:] = [
-                subfolder
-                for subfolder in subfolders
-                if subfolder.lower() != "thumbnails"
-            ]
-            counter += len(files)
-        return counter
-
-    def compare_files_count(self):
-
-        difference_found = []
-
-        counter = self.count_all_files()
-        print("Files counter = ", counter)
-
-        saved_counter = config.get_files_count()
-
-        # for the first program launch
-        if saved_counter is None:
-            config.save_files_count(counter)
-        elif counter != saved_counter:
-            config.save_files_count(counter)
-            difference_found = self.get_files_difference()
-
-        return difference_found
-
-    def get_files_difference(self):
+    def scan_files(self):
         root_folder = os.getenv("FOLDER_PATH")
 
+        # get the all the files from the DB and get all folders via the files
         db_files = set(self.db.get_all_filepaths())
+
         current_files = set()
 
         for folder, subfolders, files in os.walk(root_folder):
@@ -109,18 +78,22 @@ class FileScanner(QObject):
                 if subfolder.lower() != "thumbnails"
             ]
 
-            for filepath in files:
-                current_files.add(
-                    self.fhandler.normalize_filepath(os.path.join(folder, filepath))
-                )
+            # check if the new files are of the allowed formats
+            for filename in files:
+                file_format = os.path.splitext(filename)[1].lower()
+                if file_format in ALLOWED_TYPES:
+                    full_path = os.path.join(folder, filename)
+                    current_files.add(
+                        self.fhandler.normalize_filepath(full_path)
+                    )
 
         new_files_paths = current_files - db_files
         deleted_files_paths = db_files - current_files
 
-        difference_found = []
+
         if new_files_paths:
             self.update_files_list(new_files_paths)
-            difference_found.append("new_files")
+
 
         if deleted_files_paths:
             thumbnail_paths = self.db.get_previewpaths_by_filepaths(deleted_files_paths)
@@ -128,9 +101,7 @@ class FileScanner(QObject):
 
             self.db.delete_files_by_filepaths(deleted_files_paths)
 
-            difference_found.append("deleted_files")
 
-        return difference_found
 
     # if the actual files counter > than the one saved in the .env, generate previews for the new files and update files list in the UI
     def update_files_list(self, new_files_paths):

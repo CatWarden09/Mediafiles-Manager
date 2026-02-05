@@ -2,7 +2,7 @@ import sys, os, json
 
 from dotenv import load_dotenv
 
-VERSION = "0.9.11-beta"
+VERSION = "0.9.11"
 DEBUG = False
 
 
@@ -29,24 +29,6 @@ def save_to_env(key, value):
         f.write(f"\n{key}={value}")
 
 
-counter_path = os.path.join(assign_script_dir(), "fhandler_data", "counter.json")
-
-
-def save_files_count(value: int):
-    os.makedirs(os.path.dirname(counter_path), exist_ok=True)
-
-    with open(counter_path, "w", encoding="utf-8") as f:
-        json.dump({"FILES_COUNT": value}, f)
-
-
-def get_files_count():
-    if not os.path.exists(counter_path):
-        return None
-
-    with open(counter_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    return data.get("FILES_COUNT")
 
 
 APP_ICON_PATH = os.path.join(assign_script_dir(), "icons", "app_icon.ico")
