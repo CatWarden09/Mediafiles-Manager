@@ -4,7 +4,7 @@ import config
 from dotenv import load_dotenv
 
 from fhandler import FileHandler, FileScanner
-from database import DatabaseHandler
+from db.database import DatabaseHandler
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import QListView, QProgressBar
@@ -29,12 +29,15 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        # create the database object
-        self.db = DatabaseHandler()
-        self.db.connect_to_database()
-
         # create the error window
         self.error_window = ErrorWindow()
+
+        # create the database object
+        self.db = DatabaseHandler(self.error_window)
+        self.db.connect_to_database()
+
+        # apply DB migrations
+        self.db.apply_migrations()
 
         # create the progress bar
         self.progress_bar = QProgressBar()
@@ -133,10 +136,12 @@ class MainWindow(QtWidgets.QWidget):
             self.searchbar.show()
             self.tags_list.update_tags_list()
 
+            # scan the files difference
             self.fscanner.scan_files()
             
             self.display_files_list(folder, "program_launch")
             self.folder_list_window.display_folder_list(folder)
+
 
     def get_current_item(self):
         current_item = self.list.currentItem()
@@ -187,6 +192,7 @@ class MainWindow(QtWidgets.QWidget):
 
         files_list = self.fhandler.clear_files_list(folder)
         if files_list:
+
             config.save_to_env("IS_FOLDER_CHOSEN", "True")
             config.save_to_env("FOLDER_PATH", folder)
             config.save_to_env("THUMB_FOLDER_PATH", thumb_folder)
@@ -230,6 +236,8 @@ class MainWindow(QtWidgets.QWidget):
             self.tags_list.show()
             self.searchbar.show()
             self.tags_list.update_tags_list()
+
+
 
         # enable the program GUI
         self.setEnabled(True)

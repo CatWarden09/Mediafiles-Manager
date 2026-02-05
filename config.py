@@ -2,7 +2,7 @@ import sys, os, json
 
 from dotenv import load_dotenv
 
-VERSION = "0.9.11"
+VERSION = "0.9.12"
 DEBUG = False
 
 
@@ -27,8 +27,6 @@ env_path = os.path.join(assign_script_dir(), ".env")
 def save_to_env(key, value):
     with open(env_path, "a", encoding="utf-8") as f:
         f.write(f"\n{key}={value}")
-
-
 
 
 APP_ICON_PATH = os.path.join(assign_script_dir(), "icons", "app_icon.ico")

@@ -1,55 +1,23 @@
 import os, sqlite3, config
+from .migrator import DatabaseMigrator
+
 
 class DatabaseHandler:
-    def __init__(self):
+    def __init__(self, error_window):
 
         folder_path = os.path.join(config.assign_script_dir(), "fhandler_data")
         os.makedirs(folder_path, exist_ok=True)
         self.db_path = os.path.join(folder_path, "files.db")
+        self.error_window = error_window
 
         self.connect_to_database()
 
-        self.cursor.execute(
-            """
-        CREATE TABLE IF NOT EXISTS Files (
-        id INTEGER PRIMARY KEY,
-        filename TEXT NOT NULL,
-        filepath TEXT NOT NULL UNIQUE,
-        previewpath TEXT NOT NULL,
-        description TEXT
-        )              
-        """
-        )
+        self.migrator = DatabaseMigrator(self.connection, self.error_window)
+        
 
-        self.cursor.execute(
-            """
-        CREATE TABLE IF NOT EXISTS Tags(
-        id INTEGER PRIMARY KEY,
-        tagname TEXT NOT NULL UNIQUE)
-        """
-        )
+    def apply_migrations(self):
+        self.migrator.apply_migrations()
 
-        self.cursor.execute(
-            """
-        CREATE TABLE IF NOT EXISTS Files_tags(
-        file_id INTEGER NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY (file_id, tag_id),
-        FOREIGN KEY (file_id) REFERENCES Files(id) ON DELETE CASCADE,
-        FOREIGN KEY (tag_id) REFERENCES Tags(id) ON DELETE CASCADE
-        )
-        """
-        )
-
-        self.cursor.execute(
-            """INSERT OR IGNORE INTO Tags(tagname) VALUES
-            ("Audio"),
-            ("Video"),
-            ("Image")
-            """
-        )
-
-        self.save_changes()
 
     def connect_to_database(self):
 
@@ -131,12 +99,14 @@ class DatabaseHandler:
         self.cursor.execute("SELECT previewpath FROM Files WHERE filename = ?", (file,))
         row = self.cursor.fetchone()
         return row[0]
-    
+
     def get_previewpath_by_filepath(self, filepath):
-        self.cursor.execute("SELECT previewpath FROM Files WHERE filepath = ?", (filepath,))
+        self.cursor.execute(
+            "SELECT previewpath FROM Files WHERE filepath = ?", (filepath,)
+        )
         row = self.cursor.fetchone()
         return row[0]
-    
+
     def get_previewpaths_by_filepaths(self, filepaths):
         placeholders = ", ".join(["?"] * len(filepaths))
 
@@ -147,21 +117,21 @@ class DatabaseHandler:
         rows = self.cursor.fetchall()
 
         return [row[0] for row in rows]
-        
 
     def get_all_filenames(self):
         self.cursor.execute("SELECT filename FROM Files")
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
-    
+
     def get_files_by_filepath(self, filepath):
         self.cursor.execute(
             "SELECT filename, filepath FROM Files WHERE filepath LIKE ?",
-            (filepath + '%',)
+            (filepath + "%",),
         )
         rows = self.cursor.fetchall()
         files_in_folder = [
-            filename for filename, fullpath in rows
+            filename
+            for filename, fullpath in rows
             if os.path.dirname(fullpath) == filepath.rstrip(os.sep)
         ]
         return files_in_folder
@@ -241,23 +211,23 @@ class DatabaseHandler:
         self.cursor.execute("SELECT id FROM Files")
         rows = self.cursor.fetchall()
         return [row[0] for row in rows]
-    
+
     def get_filepath_by_id(self, id):
         self.cursor.execute("SELECT filepath FROM Files WHERE id = ?", (id,))
         row = self.cursor.fetchone()
 
         return row[0]
-    
+
     def get_previewpath_by_id(self, id):
         self.cursor.execute("SELECT previewpath FROM Files WHERE id = ?", (id,))
         row = self.cursor.fetchone()
         return row[0]
-    
+
     def get_filename_by_id(self, id):
         self.cursor.execute("SELECT filename FROM Files WHERE id = ?", (id,))
         row = self.cursor.fetchone()
         return row[0]
-    
+
     def get_ids_by_tags(self, tags_list):
         if not tags_list:
             return []
@@ -275,21 +245,21 @@ class DatabaseHandler:
         self.cursor.execute(query, params)
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
-    
+
     def get_ids_by_text(self, description):
         query = "SELECT id FROM Files WHERE description LIKE ? OR filename LIKE ?"
         self.cursor.execute(query, (f"%{description}%", f"%{description}%"))
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
-    
+
     def get_ids_by_filepath(self, filepath):
         self.cursor.execute(
-            "SELECT id, filepath FROM Files WHERE filepath LIKE ?",
-            (filepath + '%',)
+            "SELECT id, filepath FROM Files WHERE filepath LIKE ?", (filepath + "%",)
         )
         rows = self.cursor.fetchall()
         files_in_folder = [
-            id for id, fullpath in rows
+            id
+            for id, fullpath in rows
             if os.path.dirname(fullpath) == filepath.rstrip(os.sep)
         ]
         return files_in_folder
